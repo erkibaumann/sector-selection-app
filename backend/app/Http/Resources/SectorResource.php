@@ -14,6 +14,10 @@ class SectorResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id' => (int) $this->id,
+            'parent_id' => $this->parent_id === null ? null : (int) $this->parent_id,
+            'name' => $this->name,
+        ];
     }
 }
