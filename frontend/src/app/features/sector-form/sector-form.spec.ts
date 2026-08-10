@@ -83,7 +83,7 @@ describe('SectorForm', () => {
 
     fixture.detectChanges();
 
-    expect(element.textContent).toContain('Name is required.');
+    expect(element.textContent).toContain('Your name is required.');
     expect(element.textContent).toContain('Choose at least one sector.');
     expect(element.textContent).toContain('You must agree to the terms.');
   });
