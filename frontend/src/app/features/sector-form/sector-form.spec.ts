@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { SectorForm } from './sector-form';
 import { Sector } from '../../models/sector';
-import { SubmissionApi } from '../../data-access/submission-api';
+import { SectorSelectionApi } from '../../data-access/sector-selection-api';
 import { of } from 'rxjs';
 import { Submission } from '../../models/submission';
 
@@ -31,7 +31,7 @@ describe('SectorForm', () => {
       imports: [SectorForm],
       providers: [
         {
-          provide: SubmissionApi,
+          provide: SectorSelectionApi,
           useValue: {
             getSectors: () => of(sectors),
             getSubmission: () => of(existingSubmission),
@@ -46,20 +46,25 @@ describe('SectorForm', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(SectorForm);
-    fixture.detectChanges();
   });
 
   it('should create', () => {
+    fixture.detectChanges();
+
     expect(fixture.componentInstance).toBeTruthy();
   });
 
   it('renders the loaded sectors', () => {
+    fixture.detectChanges();
+
     const options = fixture.nativeElement.querySelectorAll('option');
 
     expect(options).toHaveLength(2);
   });
 
   it('places child sectors after their parent', () => {
+    fixture.detectChanges();
+
     const options = Array.from(
       fixture.nativeElement.querySelectorAll('option'),
     ) as HTMLOptionElement[];
@@ -71,6 +76,8 @@ describe('SectorForm', () => {
   });
 
   it('shows errors when mandatory fields are empty', () => {
+    fixture.detectChanges();
+
     const element = fixture.nativeElement as HTMLElement;
     const form = element.querySelector('form');
 
@@ -89,6 +96,8 @@ describe('SectorForm', () => {
   });
 
   it('saves a valid submission', () => {
+    fixture.detectChanges();
+
     const element = fixture.nativeElement as HTMLElement;
 
     const nameInput = element.querySelector<HTMLInputElement>('#name');
@@ -134,7 +143,6 @@ describe('SectorForm', () => {
       agreed_to_terms: true,
     };
 
-    fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;

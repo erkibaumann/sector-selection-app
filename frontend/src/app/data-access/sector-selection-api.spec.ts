@@ -4,10 +4,10 @@ import { TestBed } from '@angular/core/testing';
 
 import { Sector } from '../models/sector';
 import { Submission } from '../models/submission';
-import { SubmissionApi } from './submission-api';
+import { SectorSelectionApi } from './sector-selection-api';
 
-describe('SubmissionApi', () => {
-  let service: SubmissionApi;
+describe('SectorSelectionApi', () => {
+  let service: SectorSelectionApi;
   let httpTesting: HttpTestingController;
 
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('SubmissionApi', () => {
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
 
-    service = TestBed.inject(SubmissionApi);
+    service = TestBed.inject(SectorSelectionApi);
     httpTesting = TestBed.inject(HttpTestingController);
   });
 

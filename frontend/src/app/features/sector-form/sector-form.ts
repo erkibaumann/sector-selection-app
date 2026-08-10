@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { SubmissionApi } from '../../data-access/submission-api';
+import { SectorSelectionApi } from '../../data-access/sector-selection-api';
 import { Sector } from '../../models/sector';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -14,7 +14,7 @@ interface SectorOption extends Sector {
   styleUrl: './sector-form.css',
 })
 export class SectorForm implements OnInit {
-  private readonly submissionApi = inject(SubmissionApi);
+  private readonly sectorSelectionApi = inject(SectorSelectionApi);
 
   protected readonly sectors = signal<SectorOption[]>([]);
   protected readonly loading = signal(true);
@@ -40,8 +40,8 @@ export class SectorForm implements OnInit {
 
   ngOnInit(): void {
     forkJoin({
-      sectors: this.submissionApi.getSectors(),
-      submission: this.submissionApi.getSubmission(),
+      sectors: this.sectorSelectionApi.getSectors(),
+      submission: this.sectorSelectionApi.getSubmission(),
     }).subscribe({
       next: ({ sectors, submission }) => {
         this.sectors.set(this.buildSectorOptions(sectors));
@@ -70,7 +70,7 @@ export class SectorForm implements OnInit {
     this.saved.set(false);
     this.saveError.set(false);
 
-    this.submissionApi.saveSubmission(this.form.getRawValue()).subscribe({
+    this.sectorSelectionApi.saveSubmission(this.form.getRawValue()).subscribe({
       next: (submission) => {
         this.form.reset(submission);
         this.saved.set(true);

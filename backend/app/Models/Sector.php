@@ -12,6 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[WithoutTimestamps]
 class Sector extends Model
 {
+    protected function casts(): array
+    {
+        return [
+            'id' => 'integer',
+            'parent_id' => 'integer',
+        ];
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');

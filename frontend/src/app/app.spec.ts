@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
-import { SubmissionApi } from './data-access/submission-api';
+import { SectorSelectionApi } from './data-access/sector-selection-api';
 import { of } from 'rxjs';
 
 describe('App', () => {
@@ -9,7 +9,7 @@ describe('App', () => {
       imports: [App],
       providers: [
         {
-          provide: SubmissionApi,
+          provide: SectorSelectionApi,
           useValue: {
             getSectors: () => of([]),
             getSubmission: () => of(null),

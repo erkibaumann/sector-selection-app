@@ -150,7 +150,7 @@ Submissions and sectors have a many-to-many relationship through the `sector_sub
 
 No user accounts or authentication flow are needed for this assignment. Laravel's session ID identifies the submission, and `updateOrCreate` ensures there is at most one submission per session. The same `POST` endpoint therefore handles both initial saves and later edits.
 
-Because there is no authentication, Laravel's default `users` and `password_reset_tokens` tables were removed along with the `User` model, its factory, and `config/auth.php`. The framework's default migration creates `sessions` in the same file, so that migration was reduced to the session table alone rather than deleted. Its `user_id` column is kept because Laravel's database session handler writes that column whenever an authentication guard is bound, which it always is. The `cache` and `jobs` tables remain because `CACHE_STORE` and `QUEUE_CONNECTION` are both set to `database`.
+Because there is no authentication, Laravel's default `users` and `password_reset_tokens` tables were removed along with the `User` model, its factory, and `config/auth.php`. The framework's default migration creates `sessions` in the same file, so that migration was reduced to the session table alone rather than deleted. Its `user_id` column is kept because Laravel's database session handler writes that column whenever an authentication guard is bound, which it always is. The unused cache and queue migrations were also removed: this small application uses the file cache and synchronous queue defaults, so it does not need database tables or a queue worker.
 
 ### Session identity and CSRF
 

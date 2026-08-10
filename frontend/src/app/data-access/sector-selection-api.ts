@@ -12,7 +12,7 @@ interface ApiResponse<T> {
 @Injectable({
   providedIn: 'root',
 })
-export class SubmissionApi {
+export class SectorSelectionApi {
   private readonly http = inject(HttpClient);
 
   getSectors(): Observable<Sector[]> {
