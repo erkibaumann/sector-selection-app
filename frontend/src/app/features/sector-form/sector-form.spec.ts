@@ -9,6 +9,7 @@ import { Submission } from '../../models/submission';
 describe('SectorForm', () => {
   let fixture: ComponentFixture<SectorForm>;
   let submittedSubmission: Submission | undefined;
+  let existingSubmission: Submission | null;
 
   const sectors: Sector[] = [
     {
@@ -25,6 +26,7 @@ describe('SectorForm', () => {
 
   beforeEach(async () => {
     submittedSubmission = undefined;
+    existingSubmission = null;
     await TestBed.configureTestingModule({
       imports: [SectorForm],
       providers: [
@@ -32,6 +34,7 @@ describe('SectorForm', () => {
           provide: SubmissionApi,
           useValue: {
             getSectors: () => of(sectors),
+            getSubmission: () => of(existingSubmission),
             saveSubmission: (submission: Submission) => {
               submittedSubmission = submission;
 
@@ -122,5 +125,30 @@ describe('SectorForm', () => {
     });
 
     expect(element.textContent).toContain('Submission saved.');
+  });
+
+  it('refills the form from the current session submission', () => {
+    existingSubmission = {
+      name: 'Grace Hopper',
+      sector_ids: [19],
+      agreed_to_terms: true,
+    };
+
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
+    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
+
+    expect(nameInput?.value).toBe('Grace Hopper');
+    expect(termsCheckbox?.checked).toBe(true);
+
+    const selectedSectors = Array.from(sectorSelect?.selectedOptions ?? []).map((option) =>
+      option.textContent?.trim(),
+    );
+
+    expect(selectedSectors).toEqual(['Construction materials']);
   });
 });

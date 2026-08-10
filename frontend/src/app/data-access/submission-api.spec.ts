@@ -84,4 +84,47 @@ describe('SubmissionApi', () => {
 
     expect(receivedSubmission).toEqual(submission);
   });
+
+  it('loads the current session submission', () => {
+    const submission: Submission = {
+      name: 'Ada Lovelace',
+      sector_ids: [1, 19],
+      agreed_to_terms: true,
+    };
+
+    let receivedSubmission: Submission | null | undefined;
+
+    service.getSubmission().subscribe((savedSubmission) => {
+      receivedSubmission = savedSubmission;
+    });
+
+    const request = httpTesting.expectOne('/api/submission');
+
+    expect(request.request.method).toBe('GET');
+
+    request.flush({
+      data: submission,
+    });
+
+    expect(receivedSubmission).toEqual(submission);
+  });
+
+  it('returns null when the session has no submission', () => {
+    let receivedSubmission: Submission | null | undefined;
+
+    service.getSubmission().subscribe((submission) => {
+      receivedSubmission = submission;
+    });
+
+    const request = httpTesting.expectOne('/api/submission');
+
+    expect(request.request.method).toBe('GET');
+
+    request.flush(null, {
+      status: 204,
+      statusText: 'No Content',
+    });
+
+    expect(receivedSubmission).toBeNull();
+  });
 });

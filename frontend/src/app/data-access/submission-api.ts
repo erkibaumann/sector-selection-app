@@ -21,6 +21,12 @@ export class SubmissionApi {
       .pipe(map((response) => response.data));
   }
 
+  getSubmission(): Observable<Submission | null> {
+    return this.http
+      .get<ApiResponse<Submission> | null>('/api/submission')
+      .pipe(map((response) => response?.data ?? null));
+  }
+
   saveSubmission(submission: Submission): Observable<Submission> {
     return this.http.get<void>('/sanctum/csrf-cookie').pipe(
       switchMap(() => this.http.post<ApiResponse<Submission>>('/api/submission', submission)),

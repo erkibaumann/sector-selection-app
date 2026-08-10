@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
-import {SubmissionApi} from './data-access/submission-api';
-import {of} from 'rxjs';
+import { SubmissionApi } from './data-access/submission-api';
+import { of } from 'rxjs';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -11,10 +11,11 @@ describe('App', () => {
         {
           provide: SubmissionApi,
           useValue: {
-            getSectors: () => of([])
-          }
-        }
-      ]
+            getSectors: () => of([]),
+            getSubmission: () => of(null),
+          },
+        },
+      ],
     }).compileComponents();
   });
 

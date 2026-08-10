@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { SubmissionApi } from '../../data-access/submission-api';
 import { Sector } from '../../models/sector';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 
 interface SectorOption extends Sector {
   depth: number;
@@ -38,9 +39,17 @@ export class SectorForm implements OnInit {
   });
 
   ngOnInit(): void {
-    this.submissionApi.getSectors().subscribe({
-      next: (sectors) => {
+    forkJoin({
+      sectors: this.submissionApi.getSectors(),
+      submission: this.submissionApi.getSubmission(),
+    }).subscribe({
+      next: ({ sectors, submission }) => {
         this.sectors.set(this.buildSectorOptions(sectors));
+
+        if (submission !== null) {
+          this.form.reset(submission);
+        }
+
         this.loading.set(false);
       },
       error: () => {
