@@ -8,6 +8,7 @@ use App\Http\Resources\SubmissionResource;
 use App\Models\Submission;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class SubmissionController extends Controller
 {
@@ -26,12 +27,16 @@ class SubmissionController extends Controller
     {
         $validated = $request->validated();
 
-        $submission = Submission::query()->updateOrCreate(
-            ['session_id' => $request->session()->getId()],
-            ['name' => $validated['name'], 'agreed_to_terms' => true]
-        );
+        $submission = DB::transaction(function () use ($request, $validated): Submission {
+            $submission = Submission::query()->updateOrCreate(
+                ['session_id' => $request->session()->getId()],
+                ['name' => $validated['name'], 'agreed_to_terms' => true]
+            );
 
-        $submission->sectors()->sync($validated['sector_ids']);
+            $submission->sectors()->sync($validated['sector_ids']);
+
+            return $submission;
+        });
 
         return new SubmissionResource($submission->load('sectors:id'));
     }
