@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Sector;
 use Illuminate\Database\Seeder;
 
 class SectorSeeder extends Seeder
@@ -12,6 +12,8 @@ class SectorSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        Sector::query()->insert(
+            require database_path("data/sectors.php")
+        );
     }
 }
