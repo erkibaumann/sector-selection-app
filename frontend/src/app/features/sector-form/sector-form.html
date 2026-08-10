@@ -1,7 +1,7 @@
 <main class="min-vh-100 bg-body-tertiary py-4 py-md-5">
   <div class="container">
     <section
-      class="sector-form-card card mx-auto border-0 shadow-sm"
+      class="sector-form-card card mx-auto border shadow"
       aria-labelledby="sector-form-title"
     >
       <div class="card-body p-4 p-md-5">
@@ -21,7 +21,7 @@
         } @else {
           <form class="d-grid gap-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
             <div>
-              <label class="form-label fw-semibold" for="name">Name</label>
+              <label class="form-label fw-semibold" for="name">Your name</label>
 
               <input
                 class="form-control"
@@ -37,7 +37,7 @@
               />
 
               @if (form.controls.name.touched && form.controls.name.hasError('required')) {
-                <div class="invalid-feedback d-block" id="name-error">Name is required.</div>
+                <div class="invalid-feedback d-block" id="name-error">Your name is required.</div>
               }
 
               @if (form.controls.name.touched && form.controls.name.hasError('maxlength')) {
@@ -58,7 +58,7 @@
                 id="sector-ids"
                 name="sector_ids"
                 multiple
-                size="12"
+                size="14"
                 formControlName="sector_ids"
                 aria-describedby="sector-help sector-error"
                 required
@@ -99,7 +99,7 @@
                   required
                 />
 
-                <label class="form-check-label" for="agreed-to-terms">Agree to terms</label>
+                <label class="form-check-label" for="agreed-to-terms">I agree to the terms.</label>
               </div>
 
               @if (
