@@ -1,1 +1,14 @@
 <p>sector-form works!</p>
+<section>
+  <h1>
+    Sector selection
+  </h1>
+
+  @if (loading()) {
+    <p>Loading sectors, please wait.</p>
+  } @else if (loadError()) {
+    <p>Could not load sectors</p>
+  } @else {
+    <p>{{ sectors().length }} sectors loaded</p>
+  }
+</section>

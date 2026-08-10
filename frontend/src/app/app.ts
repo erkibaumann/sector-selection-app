@@ -1,12 +1,11 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { SectorForm } from './features/sector-form/sector-form';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [SectorForm],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('frontend');
 }
