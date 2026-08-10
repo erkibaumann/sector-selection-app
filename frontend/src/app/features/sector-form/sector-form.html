@@ -78,7 +78,25 @@
         }
       </div>
 
-      <button type="submit">Save</button>
+      <button type="submit" [disabled]="saving()">
+        @if (saving()) {
+          Saving...
+        } @else {
+          Save
+        }
+      </button>
+
+      <output for="name sector-ids agreed-to-terms">
+        @if (saving()) {
+          Saving submission.
+        } @else if (saved()) {
+          Submission saved.
+        }
+      </output>
+
+      @if (saveError()) {
+        <p role="alert">The submission could not be saved. Please try again.</p>
+      }
     </form>
   }
 </section>

@@ -4,9 +4,11 @@ import { SectorForm } from './sector-form';
 import { Sector } from '../../models/sector';
 import { SubmissionApi } from '../../data-access/submission-api';
 import { of } from 'rxjs';
+import { Submission } from '../../models/submission';
 
 describe('SectorForm', () => {
   let fixture: ComponentFixture<SectorForm>;
+  let submittedSubmission: Submission | undefined;
 
   const sectors: Sector[] = [
     {
@@ -22,12 +24,20 @@ describe('SectorForm', () => {
   ];
 
   beforeEach(async () => {
+    submittedSubmission = undefined;
     await TestBed.configureTestingModule({
       imports: [SectorForm],
       providers: [
         {
           provide: SubmissionApi,
-          useValue: { getSectors: () => of(sectors) },
+          useValue: {
+            getSectors: () => of(sectors),
+            saveSubmission: (submission: Submission) => {
+              submittedSubmission = submission;
+
+              return of(submission);
+            },
+          },
         },
       ],
     }).compileComponents();
@@ -73,5 +83,44 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('Name is required.');
     expect(element.textContent).toContain('Choose at least one sector.');
     expect(element.textContent).toContain('You must agree to the terms.');
+  });
+
+  it('saves a valid submission', () => {
+    const element = fixture.nativeElement as HTMLElement;
+
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
+    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
+    const form = element.querySelector('form');
+
+    if (!nameInput || !sectorSelect || !termsCheckbox || !form) {
+      throw new Error('Expected form controls were not rendered.');
+    }
+
+    nameInput.value = 'Ada Lovelace';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    sectorSelect.options[0].selected = true;
+    sectorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    termsCheckbox.checked = true;
+    termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    form.dispatchEvent(
+      new Event('submit', {
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    fixture.detectChanges();
+
+    expect(submittedSubmission).toEqual({
+      name: 'Ada Lovelace',
+      sector_ids: [1],
+      agreed_to_terms: true,
+    });
+
+    expect(element.textContent).toContain('Submission saved.');
   });
 });

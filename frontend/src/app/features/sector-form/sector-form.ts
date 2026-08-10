@@ -18,6 +18,9 @@ export class SectorForm implements OnInit {
   protected readonly sectors = signal<SectorOption[]>([]);
   protected readonly loading = signal(true);
   protected readonly loadError = signal(false);
+  protected readonly saving = signal(false);
+  protected readonly saved = signal(false);
+  protected readonly saveError = signal(false);
 
   protected readonly form = new FormGroup({
     name: new FormControl('', {
@@ -50,9 +53,25 @@ export class SectorForm implements OnInit {
   protected onSubmit(): void {
     this.form.markAllAsTouched();
 
-    if (this.form.invalid) {
+    if (this.form.invalid || this.saving()) {
       return;
     }
+
+    this.saving.set(true);
+    this.saved.set(false);
+    this.saveError.set(false);
+
+    this.submissionApi.saveSubmission(this.form.getRawValue()).subscribe({
+      next: (submission) => {
+        this.form.reset(submission);
+        this.saved.set(true);
+        this.saving.set(false);
+      },
+      error: () => {
+        this.saveError.set(true);
+        this.saving.set(false);
+      },
+    });
   }
   protected sectorIndentation(depth: number): string {
     return '\u00A0'.repeat(depth * 2);

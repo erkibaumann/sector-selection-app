@@ -1,11 +1,14 @@
-import {inject, Injectable} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
-import {map, Observable} from 'rxjs';
-import {Sector} from '../models/sector';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { map, Observable, switchMap } from 'rxjs';
+
+import { Sector } from '../models/sector';
+import { Submission } from '../models/submission';
 
 interface ApiResponse<T> {
   data: T;
 }
+
 @Injectable({
   providedIn: 'root',
 })
@@ -16,5 +19,12 @@ export class SubmissionApi {
     return this.http
       .get<ApiResponse<Sector[]>>('/api/sectors')
       .pipe(map((response) => response.data));
+  }
+
+  saveSubmission(submission: Submission): Observable<Submission> {
+    return this.http.get<void>('/sanctum/csrf-cookie').pipe(
+      switchMap(() => this.http.post<ApiResponse<Submission>>('/api/submission', submission)),
+      map((response) => response.data),
+    );
   }
 }
