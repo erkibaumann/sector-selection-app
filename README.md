@@ -12,6 +12,25 @@ The original task materials and the one-off extraction script used while prepari
 
 The extraction script documents how the supplied sector options were converted into structured data. It is not used by the application at runtime.
 
+## Database dump
+
+The assignment asks for a full database dump with both structure and data. It lives at [`backend/database/dump.sql`](backend/database/dump.sql) and is a plain `sqlite3 .dump`, so it can be read as a schema reference or loaded directly:
+
+```bash
+cd backend
+sqlite3 database/database.sqlite < database/dump.sql
+```
+
+The dump contains the complete schema and all 79 supplied sectors. It deliberately contains **no** `sessions` or `submissions` rows: those are per-visitor runtime data rather than reference data, and session IDs are the credential that identifies a visitor, so shipping them in a file meant to document the schema would be wrong on both counts. Loading the dump gives the same starting state as `php artisan migrate:fresh --seed`.
+
+To regenerate it after a schema change:
+
+```bash
+cd backend
+php artisan migrate:fresh --seed
+sqlite3 database/database.sqlite .dump > database/dump.sql
+```
+
 ## Technology stack
 
 - Angular 21 with standalone components, signals, and reactive forms
@@ -130,6 +149,8 @@ Sibling sectors are sorted alphabetically at each level. This reproduces the sup
 Submissions and sectors have a many-to-many relationship through the `sector_submission` pivot table. This keeps the data normalized and allows each submission to contain multiple sectors.
 
 No user accounts or authentication flow are needed for this assignment. Laravel's session ID identifies the submission, and `updateOrCreate` ensures there is at most one submission per session. The same `POST` endpoint therefore handles both initial saves and later edits.
+
+Because there is no authentication, Laravel's default `users` and `password_reset_tokens` tables were removed along with the `User` model, its factory, and `config/auth.php`. The framework's default migration creates `sessions` in the same file, so that migration was reduced to the session table alone rather than deleted. Its `user_id` column is kept because Laravel's database session handler writes that column whenever an authentication guard is bound, which it always is. The `cache` and `jobs` tables remain because `CACHE_STORE` and `QUEUE_CONNECTION` are both set to `database`.
 
 ### Session identity and CSRF
 
