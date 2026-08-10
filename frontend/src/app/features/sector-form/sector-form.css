@@ -1,0 +1,11 @@
+:host {
+  display: block;
+}
+
+.sector-form-card {
+  max-width: 44rem;
+}
+
+.save-status {
+  min-height: 1.5rem;
+}

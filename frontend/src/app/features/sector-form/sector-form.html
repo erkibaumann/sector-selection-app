@@ -1,102 +1,145 @@
-<section>
-  <h1>Sector selection</h1>
+<main class="min-vh-100 bg-body-tertiary py-4 py-md-5">
+  <div class="container">
+    <section
+      class="sector-form-card card mx-auto border-0 shadow-sm"
+      aria-labelledby="sector-form-title"
+    >
+      <div class="card-body p-4 p-md-5">
+        <header class="mb-4">
+          <h1 class="h2 mb-2" id="sector-form-title">Sector selection</h1>
+          <p class="mb-0 text-body-secondary">
+            Please enter your name and pick the sectors you are currently involved in.
+          </p>
+        </header>
 
-  @if (loading()) {
-    <p>Loading sectors, please wait.</p>
-  } @else if (loadError()) {
-    <p>Could not load sectors</p>
-  } @else {
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-      <div>
-        <label for="name">Name</label>
-
-        <input
-          id="name"
-          name="name"
-          type="text"
-          maxlength="255"
-          formControlName="name"
-          aria-describedby="name-error"
-          required
-        />
-
-        @if (form.controls.name.touched && form.controls.name.hasError('required')) {
-          <p id="name-error">Name is required.</p>
-        }
-
-        @if (form.controls.name.touched && form.controls.name.hasError('maxlength')) {
-          <p id="name-error">Name must not exceed 255 characters.</p>
-        }
-      </div>
-
-      <div>
-        <label for="sector-ids">Sectors</label>
-
-        <select
-          id="sector-ids"
-          name="sector_ids"
-          multiple
-          size="12"
-          formControlName="sector_ids"
-          aria-describedby="sector-help sector-error"
-          required
-        >
-          @for (sector of sectors(); track sector.id) {
-            <option [ngValue]="sector.id">
-              {{ sectorIndentation(sector.depth) }}{{ sector.name }}
-            </option>
-          }
-        </select>
-
-        <p id="sector-help">
-          Choose one or more sectors. Hold Command on macOS or Control on Windows to select multiple
-          entries.
-        </p>
-
-        @if (form.controls.sector_ids.touched && form.controls.sector_ids.hasError('required')) {
-          <p id="sector-error">Choose at least one sector.</p>
-        }
-      </div>
-
-      <div>
-        <input
-          id="agreed-to-terms"
-          name="agreed_to_terms"
-          type="checkbox"
-          formControlName="agreed_to_terms"
-          aria-describedby="terms-error"
-          required
-        />
-
-        <label for="agreed-to-terms">Agree to terms</label>
-
-        @if (
-          form.controls.agreed_to_terms.touched &&
-          form.controls.agreed_to_terms.hasError('required')
-        ) {
-          <p id="terms-error">You must agree to the terms.</p>
-        }
-      </div>
-
-      <button type="submit" [disabled]="saving()">
-        @if (saving()) {
-          Saving...
+        @if (loading()) {
+          <p class="alert alert-info mb-0">Loading sectors, please wait.</p>
+        } @else if (loadError()) {
+          <p class="alert alert-danger mb-0" role="alert">
+            Could not load sectors. Please try again.
+          </p>
         } @else {
-          Save
-        }
-      </button>
+          <form class="d-grid gap-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+            <div>
+              <label class="form-label fw-semibold" for="name">Name</label>
 
-      <output for="name sector-ids agreed-to-terms">
-        @if (saving()) {
-          Saving submission.
-        } @else if (saved()) {
-          Submission saved.
-        }
-      </output>
+              <input
+                class="form-control"
+                [class.is-invalid]="form.controls.name.touched && form.controls.name.invalid"
+                id="name"
+                name="name"
+                type="text"
+                maxlength="255"
+                formControlName="name"
+                aria-describedby="name-error"
+                autocomplete="name"
+                required
+              />
 
-      @if (saveError()) {
-        <p role="alert">The submission could not be saved. Please try again.</p>
-      }
-    </form>
-  }
-</section>
+              @if (form.controls.name.touched && form.controls.name.hasError('required')) {
+                <div class="invalid-feedback d-block" id="name-error">Name is required.</div>
+              }
+
+              @if (form.controls.name.touched && form.controls.name.hasError('maxlength')) {
+                <div class="invalid-feedback d-block" id="name-error">
+                  Name must not exceed 255 characters.
+                </div>
+              }
+            </div>
+
+            <div>
+              <label class="form-label fw-semibold" for="sector-ids">Sectors</label>
+
+              <select
+                class="form-select"
+                [class.is-invalid]="
+                  form.controls.sector_ids.touched && form.controls.sector_ids.invalid
+                "
+                id="sector-ids"
+                name="sector_ids"
+                multiple
+                size="12"
+                formControlName="sector_ids"
+                aria-describedby="sector-help sector-error"
+                required
+              >
+                @for (sector of sectors(); track sector.id) {
+                  <option [ngValue]="sector.id">
+                    {{ sectorIndentation(sector.depth) }}{{ sector.name }}
+                  </option>
+                }
+              </select>
+
+              <div class="form-text" id="sector-help">
+                Choose one or more. Hold Command on macOS or Control on Windows to select multiple
+                entries.
+              </div>
+
+              @if (
+                form.controls.sector_ids.touched && form.controls.sector_ids.hasError('required')
+              ) {
+                <div class="invalid-feedback d-block" id="sector-error">
+                  Choose at least one sector.
+                </div>
+              }
+            </div>
+
+            <div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  [class.is-invalid]="
+                    form.controls.agreed_to_terms.touched && form.controls.agreed_to_terms.invalid
+                  "
+                  id="agreed-to-terms"
+                  name="agreed_to_terms"
+                  type="checkbox"
+                  formControlName="agreed_to_terms"
+                  aria-describedby="terms-error"
+                  required
+                />
+
+                <label class="form-check-label" for="agreed-to-terms">Agree to terms</label>
+              </div>
+
+              @if (
+                form.controls.agreed_to_terms.touched &&
+                form.controls.agreed_to_terms.hasError('required')
+              ) {
+                <div class="invalid-feedback d-block" id="terms-error">
+                  You must agree to the terms.
+                </div>
+              }
+            </div>
+
+            <button class="btn btn-primary" type="submit" [disabled]="saving()">
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                Saving...
+              } @else {
+                Save
+              }
+            </button>
+
+            <output
+              class="save-status d-block text-center text-success"
+              for="name sector-ids agreed-to-terms"
+            >
+              @if (saving()) {
+                Saving submission.
+              } @else if (saved()) {
+                Submission saved.
+              }
+            </output>
+
+            @if (saveError()) {
+              <p class="alert alert-danger mb-0" role="alert">
+                The submission could not be saved. Please try again.
+              </p>
+            }
+          </form>
+        }
+      </div>
+    </section>
+  </div>
+</main>

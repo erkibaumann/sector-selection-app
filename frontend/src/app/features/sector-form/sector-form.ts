@@ -83,7 +83,7 @@ export class SectorForm implements OnInit {
     });
   }
   protected sectorIndentation(depth: number): string {
-    return '\u00A0'.repeat(depth * 2);
+    return '\u00A0'.repeat(depth * 3);
   }
 
   private buildSectorOptions(sectors: Sector[]): SectorOption[] {
