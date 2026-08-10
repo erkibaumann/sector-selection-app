@@ -12,8 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sectors', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->unsignedBigInteger('id')->primary();
+            $table->foreignId('parent_id')->nullable()->constrained('sectors');
+            $table->string('name');
+            $table->index('parent_id');
         });
     }
 
