@@ -16,7 +16,7 @@ The extraction script documents how the supplied sector options were converted i
 
 - Angular 21 with standalone components, signals, and reactive forms
 - Bootstrap 5 CSS
-- Laravel 13 with Sanctum
+- Laravel 13
 - SQLite
 - Pest for backend tests
 - Vitest through Angular's test runner for frontend tests
@@ -66,7 +66,7 @@ npm start
 
 Open `http://localhost:4200` in a browser.
 
-The Angular development server proxies `/api` and `/sanctum` requests to Laravel. This keeps requests same-origin in the browser and allows Laravel's session and CSRF cookies to work without hardcoded backend URLs in the Angular application.
+The Angular development server proxies `/api` requests to Laravel. This keeps requests same-origin in the browser and allows Laravel's session and CSRF cookies to work without hardcoded backend URLs in the Angular application.
 
 ## Using the application
 
@@ -103,7 +103,7 @@ The Angular production files are written to `frontend/dist/frontend/browser`.
 | `GET` | `/api/sectors` | Return the sectors and their parent relationships |
 | `GET` | `/api/submission` | Return the current session's submission, or `204 No Content` |
 | `POST` | `/api/submission` | Create or update the current session's submission |
-| `GET` | `/sanctum/csrf-cookie` | Initialize Laravel's CSRF protection before saving |
+| `GET` | `/api/csrf-cookie` | Initialize Laravel's CSRF protection before saving |
 
 The submission request body has this shape:
 
@@ -131,6 +131,20 @@ Submissions and sectors have a many-to-many relationship through the `sector_sub
 
 No user accounts or authentication flow are needed for this assignment. Laravel's session ID identifies the submission, and `updateOrCreate` ensures there is at most one submission per session. The same `POST` endpoint therefore handles both initial saves and later edits.
 
+### Session identity and CSRF
+
+Because the session cookie is the only thing identifying a visitor, every API route must run Laravel's session middleware. The API routes therefore prepend the `web` middleware group in `bootstrap/app.php`:
+
+```php
+$middleware->api(prepend: 'web');
+```
+
+This project initially used Laravel Sanctum's `statefulApi()` helper instead. That helper applies the session and CSRF middleware **conditionally** — only when a request's `Origin` or `Referer` header matches a configured stateful domain. Any other caller reached the controller with no session at all, and `$request->session()` then threw `Session store not set on request`, turning a well-formed request into a `500`. That failure was invisible in development, where the Angular proxy always sends a matching `Origin`, and it would have surfaced in production as a total outage the first time the deployment hostname was missing from the stateful-domain list.
+
+Prepending the group makes the dependency unconditional and declared rather than inferred from request headers. A request without a CSRF token now receives a `419`, which is the correct answer, instead of a `500`.
+
+With that in place Sanctum had no remaining role — this application has no tokens, no guards, and no authentication — so the package was removed and its single useful route replaced by `GET /api/csrf-cookie`. Angular's built-in XSRF interceptor reads the `XSRF-TOKEN` cookie and sends it back as an `X-XSRF-TOKEN` header, which is exactly what Laravel validates.
+
 ### Frontend structure
 
 The Angular component uses a reactive form so validation and form state are explicit. Signals represent loading, saving, success, and error states, while a typed API service keeps HTTP code separate from the form component.
@@ -153,6 +167,6 @@ sector-selection-app/
 
 ## Deployment notes
 
-Build Angular with `npm run build` and serve the generated files as static assets. Serve Laravel from its `backend/public` directory, and configure the web server so `/api/*` and `/sanctum/*` reach Laravel while frontend routes reach Angular.
+Build Angular with `npm run build` and serve the generated files as static assets. Serve Laravel from its `backend/public` directory, and configure the web server so `/api/*` reaches Laravel while frontend routes reach Angular.
 
 Keeping both applications under one public origin is the simplest deployment arrangement because the application relies on Laravel's session and CSRF cookies. Production environment values, HTTPS, and the chosen database should be configured on the deployment platform; Laravel's development server is not intended for production use.

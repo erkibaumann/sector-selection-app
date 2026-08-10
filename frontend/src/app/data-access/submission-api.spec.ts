@@ -67,7 +67,7 @@ describe('SubmissionApi', () => {
       receivedSubmission = savedSubmission;
     });
 
-    const csrfRequest = httpTesting.expectOne('/sanctum/csrf-cookie');
+    const csrfRequest = httpTesting.expectOne('/api/csrf-cookie');
 
     expect(csrfRequest.request.method).toBe('GET');
 

@@ -113,6 +113,24 @@ it('updates the existing submission for the same session', function () {
     ]);
 });
 
+it('reads a submission without an origin header', function () {
+    $this->withoutHeader('Origin');
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->getJson('/api/submission')->assertNoContent();
+});
+
+it('stores a submission without an origin header', function () {
+    $this->withoutHeader('Origin');
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'Ada Lovelace',
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ])->assertCreated();
+});
+
 it('does not expose a submission to a different session', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 

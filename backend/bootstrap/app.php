@@ -13,7 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        /*
+         * The API identifies a visitor by the session cookie, so it runs the
+         * full "web" stack (cookies, session, CSRF). Declaring it here means
+         * every caller gets a session, rather than only those whose Origin or
+         * Referer header happens to match a configured stateful domain.
+         */
+        $middleware->api(prepend: 'web');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

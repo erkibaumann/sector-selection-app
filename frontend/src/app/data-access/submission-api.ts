@@ -28,7 +28,7 @@ export class SubmissionApi {
   }
 
   saveSubmission(submission: Submission): Observable<Submission> {
-    return this.http.get<void>('/sanctum/csrf-cookie').pipe(
+    return this.http.get<void>('/api/csrf-cookie').pipe(
       switchMap(() => this.http.post<ApiResponse<Submission>>('/api/submission', submission)),
       map((response) => response.data),
     );
