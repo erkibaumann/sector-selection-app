@@ -2,19 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Sector;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SaveSubmissionRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return false;
-    }
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -23,7 +17,14 @@ class SaveSubmissionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name' => ['required', 'string', 'max:255'],
+            'sector_ids' => ['required', 'array', 'min:1'],
+            'sector_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists(Sector::class, 'id'),
+            ],
+            'agreed_to_terms' => ['required', 'accepted'],
         ];
     }
 }

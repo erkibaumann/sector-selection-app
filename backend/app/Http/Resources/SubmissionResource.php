@@ -14,6 +14,10 @@ class SubmissionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'name' => $this->name,
+            'sector_ids' => $this->sectors->modelKeys(),
+            'agreed_to_terms' => (bool) $this->agreed_to_terms,
+        ];
     }
 }
