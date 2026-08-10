@@ -15,9 +15,10 @@
         @if (loading()) {
           <p class="alert alert-info mb-0">Loading sectors, please wait.</p>
         } @else if (loadError()) {
-          <p class="alert alert-danger mb-0" role="alert">
-            Could not load sectors. Please try again.
-          </p>
+          <div class="alert alert-danger mb-0" role="alert">
+            <p>Could not load form data. Please try again.</p>
+            <button class="btn btn-outline-danger" type="button" (click)="load()">Try again</button>
+          </div>
         } @else {
           <form class="d-grid gap-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
             <div>

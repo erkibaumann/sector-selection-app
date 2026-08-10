@@ -3,13 +3,15 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SectorForm } from './sector-form';
 import { Sector } from '../../models/sector';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { Submission } from '../../models/submission';
 
 describe('SectorForm', () => {
   let fixture: ComponentFixture<SectorForm>;
   let submittedSubmission: Submission | undefined;
   let existingSubmission: Submission | null;
+  let submissionLoadFails: boolean;
+  let submissionLoadCount: number;
 
   const sectors: Sector[] = [
     {
@@ -27,6 +29,8 @@ describe('SectorForm', () => {
   beforeEach(async () => {
     submittedSubmission = undefined;
     existingSubmission = null;
+    submissionLoadFails = false;
+    submissionLoadCount = 0;
     await TestBed.configureTestingModule({
       imports: [SectorForm],
       providers: [
@@ -34,7 +38,13 @@ describe('SectorForm', () => {
           provide: SectorSelectionApi,
           useValue: {
             getSectors: () => of(sectors),
-            getSubmission: () => of(existingSubmission),
+            getSubmission: () => {
+              submissionLoadCount++;
+
+              return submissionLoadFails
+                ? throwError(() => new Error('Load failed'))
+                : of(existingSubmission);
+            },
             saveSubmission: (submission: Submission) => {
               submittedSubmission = submission;
 
@@ -134,6 +144,58 @@ describe('SectorForm', () => {
     });
 
     expect(element.textContent).toContain('Submission saved.');
+  });
+
+  it('clears the saved message when the form changes', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
+    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
+    const form = element.querySelector('form');
+
+    if (!nameInput || !sectorSelect || !termsCheckbox || !form) {
+      throw new Error('Expected form controls were not rendered.');
+    }
+
+    nameInput.value = 'Ada Lovelace';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    sectorSelect.options[0].selected = true;
+    sectorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    termsCheckbox.checked = true;
+    termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(element.textContent).toContain('Submission saved.');
+
+    nameInput.value = 'Grace Hopper';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(element.textContent).not.toContain('Submission saved.');
+  });
+
+  it('retries loading form data after a failure', () => {
+    submissionLoadFails = true;
+
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const retryButton = element.querySelector<HTMLButtonElement>('button');
+
+    expect(element.querySelector('form')).toBeNull();
+    expect(element.textContent).toContain('Could not load form data.');
+    expect(retryButton?.textContent).toContain('Try again');
+
+    submissionLoadFails = false;
+    retryButton?.click();
+    fixture.detectChanges();
+
+    expect(submissionLoadCount).toBe(2);
+    expect(element.querySelector('form')).toBeTruthy();
+    expect(element.textContent).not.toContain('Could not load form data.');
   });
 
   it('refills the form from the current session submission', () => {

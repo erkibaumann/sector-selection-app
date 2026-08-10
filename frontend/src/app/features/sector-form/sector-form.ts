@@ -39,6 +39,17 @@ export class SectorForm implements OnInit {
   });
 
   ngOnInit(): void {
+    this.form.valueChanges.subscribe(() => {
+      this.saved.set(false);
+    });
+
+    this.load();
+  }
+
+  protected load(): void {
+    this.loading.set(true);
+    this.loadError.set(false);
+
     forkJoin({
       sectors: this.sectorSelectionApi.getSectors(),
       submission: this.sectorSelectionApi.getSubmission(),
