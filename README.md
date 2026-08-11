@@ -33,7 +33,7 @@ sqlite3 database/database.sqlite .dump > database/dump.sql
 
 ## Technology stack
 
-- Angular 21 with standalone components, signals, and reactive forms
+- Angular 22 with standalone components, signals, and reactive forms
 - Bootstrap 5 CSS
 - Laravel 13
 - SQLite
@@ -171,7 +171,7 @@ With that in place Sanctum had no remaining role — this application has no tok
 
 ### Production hardening scope
 
-Application-specific rate limiting and a scheduled session-pruning job are deliberately out of scope for this local technical assignment. A production deployment should choose limits and a deterministic cleanup schedule based on its traffic and operational requirements. Laravel's standard session expiry remains enabled here: database sessions expire after 120 idle minutes and expired rows are swept opportunistically by the framework's session-cleanup lottery.
+Laravel's API rate limiter allows 60 requests per minute per IP address. A production deployment should tune that limit to its traffic and operational requirements. A scheduled session-pruning job remains out of scope for this local technical assignment. Laravel's standard session expiry remains enabled here: database sessions expire after 120 idle minutes and expired rows are swept opportunistically by the framework's session-cleanup lottery.
 
 ### Frontend structure
 

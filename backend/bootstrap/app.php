@@ -17,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
          * full "web" stack (cookies, session, CSRF). Declaring it here means
          * every caller gets a session, rather than only those whose Origin or
          * Referer header happens to match a configured stateful domain.
-         */
+        */
         $middleware->api(prepend: 'web');
+        $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

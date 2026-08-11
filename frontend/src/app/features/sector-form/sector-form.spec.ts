@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 
 import { SectorForm } from './sector-form';
 import { Sector } from '../../models/sector';
@@ -12,7 +13,7 @@ describe('SectorForm', () => {
   let existingSubmission: Submission | null;
   let submissionLoadFails: boolean;
   let submissionLoadCount: number;
-  let submissionSaveFails: boolean;
+  let submissionSaveError: unknown;
   let deferredSubmissionLoad: Subject<Submission | null> | undefined;
   let deferredSave: Subject<Submission> | undefined;
 
@@ -34,7 +35,7 @@ describe('SectorForm', () => {
     existingSubmission = null;
     submissionLoadFails = false;
     submissionLoadCount = 0;
-    submissionSaveFails = false;
+    submissionSaveError = undefined;
     deferredSubmissionLoad = undefined;
     deferredSave = undefined;
     await TestBed.configureTestingModule({
@@ -54,8 +55,8 @@ describe('SectorForm', () => {
             saveSubmission: (submission: Submission) => {
               submittedSubmission = submission;
 
-              if (submissionSaveFails) {
-                return throwError(() => new Error('Save failed'));
+              if (submissionSaveError !== undefined) {
+                return throwError(() => submissionSaveError);
               }
 
               return deferredSave ?? of(submission);
@@ -182,6 +183,12 @@ describe('SectorForm', () => {
     submitWithName("Ülo O'Brien-Kärner");
 
     expect(submittedSubmission?.name).toBe("Ülo O'Brien-Kärner");
+  });
+
+  it('trims the name before saving', () => {
+    submitWithName('  Ada Lovelace  ');
+
+    expect(submittedSubmission?.name).toBe('Ada Lovelace');
   });
 
   it('rejects a name longer than 255 characters', () => {
@@ -367,7 +374,7 @@ describe('SectorForm', () => {
   });
 
   it('shows a save error and clears it after a successful retry', () => {
-    submissionSaveFails = true;
+    submissionSaveError = new Error('Save failed');
 
     const element = submitWithName('Ada Lovelace');
     const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
@@ -378,12 +385,50 @@ describe('SectorForm', () => {
     expect(submitButton?.disabled).toBe(false);
     expect(nameInput?.value).toBe('Ada Lovelace');
 
-    submissionSaveFails = false;
+    submissionSaveError = undefined;
     form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     fixture.detectChanges();
 
     expect(element.textContent).not.toContain('The submission could not be saved.');
     expect(element.textContent).toContain('Submission saved.');
+  });
+
+  it('shows server validation errors on their matching controls', () => {
+    submissionSaveError = new HttpErrorResponse({
+      status: 422,
+      error: {
+        errors: {
+          name: ['The name is not available.'],
+          'sector_ids.0': ['The selected sector is no longer available.'],
+        },
+      },
+    });
+
+    const element = submitWithName('Ada Lovelace');
+
+    expect(element.textContent).toContain('The name is not available.');
+    expect(element.textContent).toContain('The selected sector is no longer available.');
+    expect(element.textContent).not.toContain('The submission could not be saved.');
+    expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
+    expect(element.querySelector('#sector-ids')?.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(element.querySelector('#name'));
+  });
+
+  it('clears a server validation error when its field changes', () => {
+    submissionSaveError = new HttpErrorResponse({
+      status: 422,
+      error: { errors: { name: ['The name is not available.'] } },
+    });
+
+    const element = submitWithName('Ada Lovelace');
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+
+    nameInput!.value = 'Grace Hopper';
+    nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(element.textContent).not.toContain('The name is not available.');
+    expect(nameInput?.getAttribute('aria-invalid')).toBe('false');
   });
 
   it('clears the saved message when the form changes', () => {

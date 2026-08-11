@@ -87,6 +87,24 @@ it('rejects duplicate sector ids', function () {
     ]);
 });
 
+it('rate limits submission requests', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    for ($attempt = 0; $attempt < 60; $attempt++) {
+        $this->postJson('/api/submission', [
+            'name' => 'John Doe',
+            'sector_ids' => [342],
+            'agreed_to_terms' => true,
+        ])->assertSuccessful();
+    }
+
+    $this->postJson('/api/submission', [
+        'name' => 'John Doe',
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ])->assertTooManyRequests()->assertHeader('Retry-After');
+});
+
 it('stores a submission for the current session', function () {
     $sessionId = Str::random(40);
     $this->withCookie(config('session.cookie'), $sessionId);

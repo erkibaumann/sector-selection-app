@@ -1,6 +1,8 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
 import { Sector } from '../../models/sector';
+import { Submission } from '../../models/submission';
 import {
   AbstractControl,
   FormControl,
@@ -13,6 +15,10 @@ import { forkJoin } from 'rxjs';
 
 interface SectorOption extends Sector {
   depth: number;
+}
+
+interface ValidationErrorResponse {
+  errors?: Record<string, unknown>;
 }
 
 const NAME_PATTERN = /^\p{L}[\p{L}\p{M}\s'’.-]*$/u;
@@ -28,6 +34,11 @@ function nameFormat(control: AbstractControl): ValidationErrors | null {
 
   return name === '' || NAME_PATTERN.test(name) ? null : { nameFormat: true };
 }
+
+function isSubmissionField(field: string): field is keyof Submission {
+  return field === 'name' || field === 'sector_ids' || field === 'agreed_to_terms';
+}
+
 @Component({
   selector: 'app-sector-form',
   imports: [ReactiveFormsModule],
@@ -96,6 +107,9 @@ export class SectorForm implements OnInit {
   }
 
   protected onSubmit(): void {
+    const nameControl = this.form.controls.name;
+
+    nameControl.setValue(nameControl.value.trim());
     this.form.markAllAsTouched();
 
     if (this.form.invalid) {
@@ -118,18 +132,66 @@ export class SectorForm implements OnInit {
         this.saved.set(true);
         this.saving.set(false);
       },
-      error: () => {
-        this.saveError.set(true);
+      error: (error: HttpErrorResponse) => {
         this.saving.set(false);
+
+        if (this.applyValidationErrors(error)) {
+          this.focusFirstInvalidControl();
+        } else {
+          this.saveError.set(true);
+        }
       },
     });
   }
+
   protected sectorIndentation(depth: number): string {
     return '\u00A0'.repeat(depth * INDENT_PER_LEVEL);
   }
 
   protected showsError(control: AbstractControl): boolean {
     return control.touched && control.invalid;
+  }
+
+  protected serverErrors(control: AbstractControl): string[] | null {
+    const errors: unknown = control.getError('server');
+
+    return Array.isArray(errors) ? errors : null;
+  }
+
+  private applyValidationErrors(error: HttpErrorResponse): boolean {
+    if (error.status !== 422) {
+      return false;
+    }
+
+    const response = error.error as ValidationErrorResponse | null;
+    let applied = false;
+
+    for (const [errorKey, messages] of Object.entries(response?.errors ?? {})) {
+      const field = errorKey.split('.')[0];
+
+      if (!isSubmissionField(field) || !Array.isArray(messages)) {
+        continue;
+      }
+
+      const control = this.form.controls[field];
+      const existingMessages = this.serverErrors(control) ?? [];
+      const fieldMessages = messages.filter(
+        (message): message is string => typeof message === 'string',
+      );
+
+      if (fieldMessages.length === 0) {
+        continue;
+      }
+
+      control.setErrors({
+        ...control.errors,
+        server: [...existingMessages, ...fieldMessages],
+      });
+      control.markAsTouched();
+      applied = true;
+    }
+
+    return applied;
   }
 
   private focusFirstInvalidControl(): void {

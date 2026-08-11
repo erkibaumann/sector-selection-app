@@ -41,7 +41,11 @@
 
               @if (form.controls.name.touched && form.controls.name.invalid) {
                 <div class="invalid-feedback d-block" id="name-error">
-                  @if (form.controls.name.hasError('required')) {
+                  @if (serverErrors(form.controls.name); as errors) {
+                    @for (error of errors; track error) {
+                      {{ error }}
+                    }
+                  } @else if (form.controls.name.hasError('required')) {
                     Your name is required.
                   } @else if (form.controls.name.hasError('nameFormat')) {
                     Name may only contain letters, spaces, hyphens and apostrophes.
@@ -82,11 +86,15 @@
                 entries.
               </div>
 
-              @if (
-                form.controls.sector_ids.touched && form.controls.sector_ids.hasError('required')
-              ) {
+              @if (form.controls.sector_ids.touched && form.controls.sector_ids.invalid) {
                 <div class="invalid-feedback d-block" id="sector-error">
-                  Choose at least one sector.
+                  @if (serverErrors(form.controls.sector_ids); as errors) {
+                    @for (error of errors; track error) {
+                      {{ error }}
+                    }
+                  } @else if (form.controls.sector_ids.hasError('required')) {
+                    Choose at least one sector.
+                  }
                 </div>
               }
             </div>
@@ -111,12 +119,15 @@
                 <label class="form-check-label" for="agreed-to-terms">I agree to the terms.</label>
               </div>
 
-              @if (
-                form.controls.agreed_to_terms.touched &&
-                form.controls.agreed_to_terms.hasError('required')
-              ) {
+              @if (form.controls.agreed_to_terms.touched && form.controls.agreed_to_terms.invalid) {
                 <div class="invalid-feedback d-block" id="terms-error">
-                  You must agree to the terms.
+                  @if (serverErrors(form.controls.agreed_to_terms); as errors) {
+                    @for (error of errors; track error) {
+                      {{ error }}
+                    }
+                  } @else if (form.controls.agreed_to_terms.hasError('required')) {
+                    You must agree to the terms.
+                  }
                 </div>
               }
             </div>
