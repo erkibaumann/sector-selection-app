@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('submissions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('session_id')->unique();
+            $table->string('session_id', 64)->unique();
             $table->boolean('agreed_to_terms');
             $table->timestamps();
         });

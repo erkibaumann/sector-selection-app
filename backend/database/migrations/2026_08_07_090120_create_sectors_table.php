@@ -15,7 +15,6 @@ return new class extends Migration
             $table->unsignedBigInteger('id')->primary();
             $table->foreignId('parent_id')->nullable()->constrained('sectors');
             $table->string('name');
-            $table->index('parent_id');
         });
     }
 

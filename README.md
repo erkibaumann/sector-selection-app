@@ -145,6 +145,8 @@ Sectors use a self-referencing `parent_id` instead of storing indentation in the
 
 Sibling sectors are sorted alphabetically at each level. This reproduces the supplied ordering without adding a separate sort column.
 
+The rendered `<option>` labels still use non-breaking spaces for indentation, as the original file did. That is a deliberate limit rather than a leftover: browsers do not reliably apply `padding` or `text-indent` inside an `<option>`, so non-breaking spaces are the only indentation that renders consistently. The difference from the original is where the indentation comes from — Angular derives it from each sector's depth at render time, instead of it being stored in the sector names.
+
 ### Submission storage
 
 Submissions and sectors have a many-to-many relationship through the `sector_submission` pivot table. This keeps the data normalized and allows each submission to contain multiple sectors.

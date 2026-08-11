@@ -91,7 +91,6 @@ CREATE TABLE IF NOT EXISTS "sector_submission" ("submission_id" integer not null
 INSERT INTO sqlite_sequence VALUES('migrations',4);
 CREATE INDEX "sessions_user_id_index" on "sessions" ("user_id");
 CREATE INDEX "sessions_last_activity_index" on "sessions" ("last_activity");
-CREATE INDEX "sectors_parent_id_index" on "sectors" ("parent_id");
 CREATE UNIQUE INDEX "submissions_session_id_unique" on "submissions" ("session_id");
 CREATE UNIQUE INDEX "sector_submission_submission_id_sector_id_unique" on "sector_submission" ("submission_id", "sector_id");
 COMMIT;
