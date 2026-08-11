@@ -34,24 +34,24 @@ it('rejects a whitespace-only name', function () {
     ])->assertUnprocessable()->assertJsonValidationErrors('name');
 });
 
-it('rejects a name containing digits or symbols', function () {
+it('accepts names from any alphabet', function (string $name) {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'J0hn #1',
-        'sector_ids' => [342],
-        'agreed_to_terms' => true,
-    ])->assertUnprocessable()->assertJsonValidationErrors('name');
-});
-
-it('accepts a name with accents, apostrophes and hyphens', function () {
-    $this->withCookie(config('session.cookie'), Str::random(40));
-
-    $this->postJson('/api/submission', [
-        'name' => "Ülo O'Brien-Kärner",
+        'name' => $name,
         'sector_ids' => [342],
         'agreed_to_terms' => true,
     ])->assertCreated();
+})->with(["Ülo O'Brien-Kärner", "'t Hooft", '李雷', 'X Æ A-12']);
+
+it('rejects sector ids sent as an object rather than a list', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'Ada Lovelace',
+        'sector_ids' => ['unexpected_key' => 342],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors('sector_ids');
 });
 
 it('rejects a name longer than 255 characters', function () {

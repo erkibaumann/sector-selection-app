@@ -21,18 +21,10 @@ interface ValidationErrorResponse {
   errors?: Record<string, unknown>;
 }
 
-const NAME_PATTERN = /^\p{L}[\p{L}\p{M}\s'’.-]*$/u;
-
 const INDENT_PER_LEVEL = 4;
 
 function nonBlankName(control: AbstractControl): ValidationErrors | null {
   return String(control.value ?? '').trim() === '' ? { required: true } : null;
-}
-
-function nameFormat(control: AbstractControl): ValidationErrors | null {
-  const name = String(control.value ?? '').trim();
-
-  return name === '' || NAME_PATTERN.test(name) ? null : { nameFormat: true };
 }
 
 function isSubmissionField(field: string): field is keyof Submission {
@@ -62,7 +54,7 @@ export class SectorForm implements OnInit {
   protected readonly form = new FormGroup({
     name: new FormControl('', {
       nonNullable: true,
-      validators: [nonBlankName, nameFormat, Validators.maxLength(255)],
+      validators: [nonBlankName, Validators.maxLength(255)],
     }),
     sector_ids: new FormControl<number[]>([], {
       nonNullable: true,

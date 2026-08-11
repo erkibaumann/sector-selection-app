@@ -175,20 +175,14 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('Your name is required.');
   });
 
-  it('rejects a name containing digits or symbols', () => {
-    const element = submitWithName('J0hn #1');
+  it.each(["Ülo O'Brien-Kärner", "'t Hooft", '李雷', 'X Æ A-12'])(
+    'accepts %s as a name',
+    (name) => {
+      submitWithName(name);
 
-    expect(submittedSubmission).toBeUndefined();
-    expect(element.textContent).toContain(
-      'Name may only contain letters, spaces, hyphens and apostrophes.',
-    );
-  });
-
-  it('accepts a name with accents, apostrophes and hyphens', () => {
-    submitWithName("Ülo O'Brien-Kärner");
-
-    expect(submittedSubmission?.name).toBe("Ülo O'Brien-Kärner");
-  });
+      expect(submittedSubmission?.name).toBe(name);
+    },
+  );
 
   it('trims the name before saving', () => {
     submitWithName('  Ada Lovelace  ');
