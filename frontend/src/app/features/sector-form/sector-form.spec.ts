@@ -367,8 +367,10 @@ describe('SectorForm', () => {
 
     const element = submitWithName('Ada Lovelace');
     const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const fieldset = element.querySelector<HTMLFieldSetElement>('fieldset');
 
     expect(submitButton?.disabled).toBe(true);
+    expect(fieldset?.disabled).toBe(true);
     expect(element.textContent).toContain('Saving...');
     expect(element.textContent).toContain('Saving submission.');
 
@@ -377,6 +379,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(submitButton?.disabled).toBe(false);
+    expect(fieldset?.disabled).toBe(false);
     expect(element.textContent).not.toContain('Saving submission.');
     expect(element.textContent).toContain('Submission saved.');
   });
