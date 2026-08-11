@@ -54,6 +54,16 @@ it('accepts a name with accents, apostrophes and hyphens', function () {
     ])->assertCreated();
 });
 
+it('rejects a name longer than 255 characters', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => str_repeat('A', 256),
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors('name');
+});
+
 it('rejects sector ids that do not exist', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
@@ -62,6 +72,19 @@ it('rejects sector ids that do not exist', function () {
         'sector_ids' => [67878, 89088, 5000],
         'agreed_to_terms' => true,
     ])->assertJsonValidationErrors('sector_ids.0');
+});
+
+it('rejects duplicate sector ids', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'John Doe',
+        'sector_ids' => [342, 342],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors([
+        'sector_ids.0',
+        'sector_ids.1',
+    ]);
 });
 
 it('stores a submission for the current session', function () {

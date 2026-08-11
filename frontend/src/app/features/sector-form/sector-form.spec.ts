@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SectorForm } from './sector-form';
 import { Sector } from '../../models/sector';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { Submission } from '../../models/submission';
 
 describe('SectorForm', () => {
@@ -12,6 +12,9 @@ describe('SectorForm', () => {
   let existingSubmission: Submission | null;
   let submissionLoadFails: boolean;
   let submissionLoadCount: number;
+  let submissionSaveFails: boolean;
+  let deferredSubmissionLoad: Subject<Submission | null> | undefined;
+  let deferredSave: Subject<Submission> | undefined;
 
   const sectors: Sector[] = [
     {
@@ -31,6 +34,9 @@ describe('SectorForm', () => {
     existingSubmission = null;
     submissionLoadFails = false;
     submissionLoadCount = 0;
+    submissionSaveFails = false;
+    deferredSubmissionLoad = undefined;
+    deferredSave = undefined;
     await TestBed.configureTestingModule({
       imports: [SectorForm],
       providers: [
@@ -43,12 +49,16 @@ describe('SectorForm', () => {
 
               return submissionLoadFails
                 ? throwError(() => new Error('Load failed'))
-                : of(existingSubmission);
+                : (deferredSubmissionLoad ?? of(existingSubmission));
             },
             saveSubmission: (submission: Submission) => {
               submittedSubmission = submission;
 
-              return of(submission);
+              if (submissionSaveFails) {
+                return throwError(() => new Error('Save failed'));
+              }
+
+              return deferredSave ?? of(submission);
             },
           },
         },
@@ -70,6 +80,24 @@ describe('SectorForm', () => {
     const options = fixture.nativeElement.querySelectorAll('option');
 
     expect(options).toHaveLength(2);
+  });
+
+  it('shows the loading state until all form data has loaded', () => {
+    deferredSubmissionLoad = new Subject<Submission | null>();
+
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.textContent).toContain('Loading sectors, please wait.');
+    expect(element.querySelector('form')).toBeNull();
+
+    deferredSubmissionLoad.next(null);
+    deferredSubmissionLoad.complete();
+    fixture.detectChanges();
+
+    expect(element.textContent).not.toContain('Loading sectors, please wait.');
+    expect(element.querySelector('form')).toBeTruthy();
   });
 
   it('places child sectors after their parent', () => {
@@ -156,6 +184,13 @@ describe('SectorForm', () => {
     expect(submittedSubmission?.name).toBe("Ülo O'Brien-Kärner");
   });
 
+  it('rejects a name longer than 255 characters', () => {
+    const element = submitWithName('A'.repeat(256));
+
+    expect(submittedSubmission).toBeUndefined();
+    expect(element.textContent).toContain('Name must not exceed 255 characters.');
+  });
+
   it('focuses the name field when the whole form is empty', () => {
     fixture.detectChanges();
 
@@ -234,6 +269,43 @@ describe('SectorForm', () => {
     expect(nameInput?.getAttribute('aria-invalid')).toBe('false');
   });
 
+  it('only references descriptions that exist in the DOM', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const controls = ['#name', '#sector-ids', '#agreed-to-terms'];
+    const expectReferencesToResolve = (): void => {
+      for (const selector of controls) {
+        const describedBy = element.querySelector(selector)?.getAttribute('aria-describedby');
+
+        for (const id of describedBy?.split(/\s+/).filter(Boolean) ?? []) {
+          expect(element.querySelector(`#${id}`)).not.toBeNull();
+        }
+      }
+    };
+
+    expect(element.querySelector('#name')?.getAttribute('aria-describedby')).toBeNull();
+    expect(element.querySelector('#sector-ids')?.getAttribute('aria-describedby')).toBe(
+      'sector-help',
+    );
+    expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBeNull();
+    expectReferencesToResolve();
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(element.querySelector('#name')?.getAttribute('aria-describedby')).toBe('name-error');
+    expect(element.querySelector('#sector-ids')?.getAttribute('aria-describedby')).toBe(
+      'sector-help sector-error',
+    );
+    expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBe(
+      'terms-error',
+    );
+    expectReferencesToResolve();
+  });
+
   it('saves a valid submission', () => {
     fixture.detectChanges();
 
@@ -272,6 +344,45 @@ describe('SectorForm', () => {
       agreed_to_terms: true,
     });
 
+    expect(element.textContent).toContain('Submission saved.');
+  });
+
+  it('shows the saving state until the request completes', () => {
+    deferredSave = new Subject<Submission>();
+
+    const element = submitWithName('Ada Lovelace');
+    const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+    expect(submitButton?.disabled).toBe(true);
+    expect(element.textContent).toContain('Saving...');
+    expect(element.textContent).toContain('Saving submission.');
+
+    deferredSave.next(submittedSubmission!);
+    deferredSave.complete();
+    fixture.detectChanges();
+
+    expect(submitButton?.disabled).toBe(false);
+    expect(element.textContent).not.toContain('Saving submission.');
+    expect(element.textContent).toContain('Submission saved.');
+  });
+
+  it('shows a save error and clears it after a successful retry', () => {
+    submissionSaveFails = true;
+
+    const element = submitWithName('Ada Lovelace');
+    const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+    const form = element.querySelector('form');
+
+    expect(element.textContent).toContain('The submission could not be saved.');
+    expect(submitButton?.disabled).toBe(false);
+    expect(nameInput?.value).toBe('Ada Lovelace');
+
+    submissionSaveFails = false;
+    form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(element.textContent).not.toContain('The submission could not be saved.');
     expect(element.textContent).toContain('Submission saved.');
   });
 
