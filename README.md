@@ -44,8 +44,8 @@ sqlite3 database/database.sqlite .dump > database/dump.sql
 
 - PHP 8.3 or newer with the SQLite extension
 - Composer 2
-- Node.js supported by Angular 21
-- npm 11 or a compatible npm version
+- Node.js 24 (also pinned in `.nvmrc` and `frontend/package.json`)
+- npm 11 (the exact package-manager version is pinned in `frontend/package.json`)
 
 ## Local setup
 
@@ -76,6 +76,8 @@ This command deletes existing local submissions before recreating the tables.
 ### 2. Start the frontend
 
 Open another terminal at the repository root:
+
+If you use nvm, run `nvm use` to select the repository's pinned Node.js version. Then start Angular:
 
 ```bash
 cd frontend
@@ -165,6 +167,10 @@ This project initially used Laravel Sanctum's `statefulApi()` helper instead. Th
 Prepending the group makes the dependency unconditional and declared rather than inferred from request headers. A request without a CSRF token now receives a `419`, which is the correct answer, instead of a `500`.
 
 With that in place Sanctum had no remaining role — this application has no tokens, no guards, and no authentication — so the package was removed and its single useful route replaced by `GET /api/csrf-cookie`. Angular's built-in XSRF interceptor reads the `XSRF-TOKEN` cookie and sends it back as an `X-XSRF-TOKEN` header, which is exactly what Laravel validates.
+
+### Production hardening scope
+
+Application-specific rate limiting and a scheduled session-pruning job are deliberately out of scope for this local technical assignment. A production deployment should choose limits and a deterministic cleanup schedule based on its traffic and operational requirements. Laravel's standard session expiry remains enabled here: database sessions expire after 120 idle minutes and expired rows are swept opportunistically by the framework's session-cleanup lottery.
 
 ### Frontend structure
 
