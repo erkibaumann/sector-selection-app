@@ -17,6 +17,8 @@ interface SectorOption extends Sector {
 
 const NAME_PATTERN = /^\p{L}[\p{L}\p{M}\s'’.-]*$/u;
 
+const INDENT_PER_LEVEL = 4;
+
 function nonBlankName(control: AbstractControl): ValidationErrors | null {
   return String(control.value ?? '').trim() === '' ? { required: true } : null;
 }
@@ -123,7 +125,7 @@ export class SectorForm implements OnInit {
     });
   }
   protected sectorIndentation(depth: number): string {
-    return '\u00A0'.repeat(depth * 3);
+    return '\u00A0'.repeat(depth * INDENT_PER_LEVEL);
   }
 
   protected showsError(control: AbstractControl): boolean {
