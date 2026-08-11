@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map, Observable, switchMap } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { Sector } from '../models/sector';
 import { Submission } from '../models/submission';
@@ -28,9 +28,8 @@ export class SectorSelectionApi {
   }
 
   saveSubmission(submission: Submission): Observable<Submission> {
-    return this.http.get<void>('/api/csrf-cookie').pipe(
-      switchMap(() => this.http.post<ApiResponse<Submission>>('/api/submission', submission)),
-      map((response) => response.data),
-    );
+    return this.http
+      .post<ApiResponse<Submission>>('/api/submission', submission)
+      .pipe(map((response) => response.data));
   }
 }

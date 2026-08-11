@@ -5,7 +5,7 @@ use Database\Seeders\SectorSeeder;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    $this->withHeader('Origin', 'http://localhost:4200');
+    // Laravel's JSON test helpers only include configured cookies with this enabled.
     $this->withCredentials();
     $this->seed(SectorSeeder::class);
 });
@@ -141,24 +141,6 @@ it('updates the existing submission for the same session', function () {
     $this->assertDatabaseMissing('sector_submission', [
         'submission_id' => Submission::sole()->id, 'sector_id' => 342,
     ]);
-});
-
-it('reads a submission without an origin header', function () {
-    $this->withoutHeader('Origin');
-    $this->withCookie(config('session.cookie'), Str::random(40));
-
-    $this->getJson('/api/submission')->assertNoContent();
-});
-
-it('stores a submission without an origin header', function () {
-    $this->withoutHeader('Origin');
-    $this->withCookie(config('session.cookie'), Str::random(40));
-
-    $this->postJson('/api/submission', [
-        'name' => 'Ada Lovelace',
-        'sector_ids' => [342],
-        'agreed_to_terms' => true,
-    ])->assertCreated();
 });
 
 it('does not expose a submission to a different session', function () {

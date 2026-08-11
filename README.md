@@ -124,7 +124,6 @@ The Angular production files are written to `frontend/dist/frontend/browser`.
 | `GET` | `/api/sectors` | Return the sectors and their parent relationships |
 | `GET` | `/api/submission` | Return the current session's submission, or `204 No Content` |
 | `POST` | `/api/submission` | Create or update the current session's submission |
-| `GET` | `/api/csrf-cookie` | Initialize Laravel's CSRF protection before saving |
 
 The submission request body has this shape:
 
@@ -166,7 +165,7 @@ This project initially used Laravel Sanctum's `statefulApi()` helper instead. Th
 
 Prepending the group makes the dependency unconditional and declared rather than inferred from request headers. A request without a CSRF token now receives a `419`, which is the correct answer, instead of a `500`.
 
-With that in place Sanctum had no remaining role — this application has no tokens, no guards, and no authentication — so the package was removed and its single useful route replaced by `GET /api/csrf-cookie`. Angular's built-in XSRF interceptor reads the `XSRF-TOKEN` cookie and sends it back as an `X-XSRF-TOKEN` header, which is exactly what Laravel validates.
+With that in place Sanctum had no remaining role — this application has no tokens, no guards, and no authentication — so the package was removed. The initial API requests for the sectors and current submission establish the session and `XSRF-TOKEN` cookies. Angular's built-in XSRF interceptor sends that token back as an `X-XSRF-TOKEN` header on the save request, which is exactly what Laravel validates. No separate CSRF initialization request is needed.
 
 ### Production hardening scope
 

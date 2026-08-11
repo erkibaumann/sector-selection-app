@@ -54,7 +54,7 @@ describe('SectorSelectionApi', () => {
     expect(receivedSectors).toEqual(expectedSectors);
   });
 
-  it('initializes CSRF and saves a submission', () => {
+  it('saves a submission', () => {
     const submission: Submission = {
       name: 'Ada Lovelace',
       sector_ids: [1, 19],
@@ -66,12 +66,6 @@ describe('SectorSelectionApi', () => {
     service.saveSubmission(submission).subscribe((savedSubmission) => {
       receivedSubmission = savedSubmission;
     });
-
-    const csrfRequest = httpTesting.expectOne('/api/csrf-cookie');
-
-    expect(csrfRequest.request.method).toBe('GET');
-
-    csrfRequest.flush(null);
 
     const saveRequest = httpTesting.expectOne('/api/submission');
 
