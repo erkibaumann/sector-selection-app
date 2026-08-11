@@ -255,6 +255,52 @@ describe('SectorTreeSelector', () => {
     expect(selections.at(-1)).toEqual([]);
   });
 
+  it('renders a pill for every selection', () => {
+    fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
+    fixture.detectChanges();
+
+    expect(element.querySelectorAll('.selected-sector-pill').length).toBe(3);
+  });
+
+  it('expands and collapses every category at once', () => {
+    const toggle = () => {
+      const button = Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
+        (candidate) =>
+          candidate.textContent?.includes('Expand all') ||
+          candidate.textContent?.includes('Collapse all'),
+      );
+
+      if (!button) {
+        throw new Error('Expected the expand/collapse all control.');
+      }
+
+      return button;
+    };
+
+    expect(toggle().textContent).toContain('Expand all');
+
+    toggle().click();
+    fixture.detectChanges();
+
+    expect(element.querySelector<HTMLUListElement>('#sector-children-1')?.hidden).toBe(false);
+    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(false);
+    expect(toggle().textContent).toContain('Collapse all');
+
+    toggle().click();
+    fixture.detectChanges();
+
+    expect(element.querySelector<HTMLUListElement>('#sector-children-1')?.hidden).toBe(true);
+    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
+    expect(toggle().textContent).toContain('Expand all');
+  });
+
+  it('hides the expand-all control while filtering forces everything open', () => {
+    filter('bedroom');
+
+    expect(element.textContent).not.toContain('Expand all');
+    expect(element.textContent).not.toContain('Collapse all');
+  });
+
   it('announces an empty selection state', () => {
     const label = element.querySelector('#selected-sectors-label');
 

@@ -61,6 +61,18 @@ export class SectorTreeSelector {
     this.tree().orderedNodes.filter((node) => node.selectable && this.selectedIdSet().has(node.id)),
   );
 
+  private readonly categoryIds = computed(() =>
+    this.tree()
+      .orderedNodes.filter((node) => node.children.length > 0)
+      .map((node) => node.id),
+  );
+  protected readonly allExpanded = computed(() => {
+    const expandedIds = this.expandedIds();
+    const categoryIds = this.categoryIds();
+
+    return categoryIds.length > 0 && categoryIds.every((id) => expandedIds.has(id));
+  });
+
   /** `null` means no filter is active, so every node is visible. */
   protected readonly visibleIds = computed<ReadonlySet<number> | null>(() => {
     const query = this.normalizedFilter();
@@ -182,6 +194,10 @@ export class SectorTreeSelector {
 
   protected clearSelection(): void {
     this.emitInTreeOrder(new Set());
+  }
+
+  protected toggleExpandAll(): void {
+    this.expandedIds.set(this.allExpanded() ? new Set() : new Set(this.categoryIds()));
   }
 
   protected checkboxId(id: number): string {

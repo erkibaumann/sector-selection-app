@@ -22,7 +22,9 @@
     </div>
 
     @if (selectedNodes().length === 0) {
-      <p class="form-text mb-0">Nothing selected yet. Pick one or more sectors below.</p>
+      <p class="selected-sectors-empty form-text mb-0">
+        Nothing selected yet. Pick one or more sectors below.
+      </p>
     } @else {
       <ul class="selected-sector-pills list-unstyled mb-0" aria-labelledby="selected-sectors-label">
         @for (node of selectedNodes(); track node.id) {
@@ -71,13 +73,30 @@
       }
     </div>
 
-    <p class="form-text mb-0" id="sector-filter-results" aria-live="polite">
-      @if (isFiltering()) {
-        {{ resultCount() }} {{ resultCount() === 1 ? 'sector' : 'sectors' }} found.
-      } @else {
-        {{ availableCount() }} sectors available.
+    <div class="sector-filter-meta">
+      <p class="form-text mb-0" id="sector-filter-results" aria-live="polite">
+        @if (isFiltering()) {
+          {{ resultCount() }} {{ resultCount() === 1 ? 'sector' : 'sectors' }} found.
+        } @else {
+          {{ availableCount() }} sectors available.
+        }
+      </p>
+
+      @if (!isFiltering()) {
+        <button
+          class="btn btn-sm btn-link p-0"
+          type="button"
+          aria-controls="sector-tree-list"
+          (click)="toggleExpandAll()"
+        >
+          @if (allExpanded()) {
+            Collapse all
+          } @else {
+            Expand all
+          }
+        </button>
       }
-    </p>
+    </div>
   </div>
 
   <div class="sector-tree-scroll rounded border bg-body" tabindex="-1">
