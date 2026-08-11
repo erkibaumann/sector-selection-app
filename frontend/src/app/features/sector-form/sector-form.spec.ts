@@ -89,8 +89,12 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
+    const card = element.querySelector('section');
+    const loadingStatus = element.querySelector('[role="status"]');
 
     expect(element.textContent).toContain('Loading sectors, please wait.');
+    expect(card?.getAttribute('aria-busy')).toBe('true');
+    expect(loadingStatus?.textContent).toContain('Loading sectors, please wait.');
     expect(element.querySelector('form')).toBeNull();
 
     deferredSubmissionLoad.next(null);
@@ -98,6 +102,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(element.textContent).not.toContain('Loading sectors, please wait.');
+    expect(card?.getAttribute('aria-busy')).toBe('false');
     expect(element.querySelector('form')).toBeTruthy();
   });
 

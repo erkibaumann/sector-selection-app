@@ -41,4 +41,18 @@ class SaveSubmissionRequest extends FormRequest
             'name.regex' => 'The name field may only contain letters, spaces, hyphens and apostrophes.',
         ];
     }
+
+    /**
+     * Get custom attributes for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'sector_ids' => 'sectors',
+            'sector_ids.*' => 'sector',
+            'agreed_to_terms' => 'terms agreement',
+        ];
+    }
 }

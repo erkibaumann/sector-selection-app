@@ -74,6 +74,20 @@ it('rejects sector ids that do not exist', function () {
     ])->assertJsonValidationErrors('sector_ids.0');
 });
 
+it('uses human-readable field names in validation messages', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'John Doe',
+        'sector_ids' => ['invalid'],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJson([
+        'errors' => [
+            'sector_ids.0' => ['The sector field must be an integer.'],
+        ],
+    ]);
+});
+
 it('rejects duplicate sector ids', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 

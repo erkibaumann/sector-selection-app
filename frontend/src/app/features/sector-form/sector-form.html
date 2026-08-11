@@ -3,6 +3,7 @@
     <section
       class="sector-form-card card mx-auto border shadow"
       aria-labelledby="sector-form-title"
+      [attr.aria-busy]="loading()"
     >
       <div class="card-body p-4 p-md-5">
         <header class="mb-4">
@@ -13,7 +14,7 @@
         </header>
 
         @if (loading()) {
-          <p class="alert alert-info mb-0">Loading sectors, please wait.</p>
+          <p class="alert alert-info mb-0" role="status">Loading sectors, please wait.</p>
         } @else if (loadError()) {
           <div class="alert alert-danger mb-0" role="alert">
             <p>Could not load form data. Please try again.</p>

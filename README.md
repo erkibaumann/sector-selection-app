@@ -44,7 +44,7 @@ sqlite3 database/database.sqlite .dump > database/dump.sql
 
 - PHP 8.3 or newer with the SQLite extension
 - Composer 2
-- Node.js 24 (also pinned in `.nvmrc` and `frontend/package.json`)
+- Node.js 24.15 or newer (also pinned in `.nvmrc` and `frontend/package.json`)
 - npm 11 (the exact package-manager version is pinned in `frontend/package.json`)
 
 ## Local setup
@@ -88,6 +88,8 @@ npm start
 Open `http://localhost:4200` in a browser.
 
 The Angular development server proxies `/api` requests to Laravel. This keeps requests same-origin in the browser and allows Laravel's session and CSRF cookies to work without hardcoded backend URLs in the Angular application.
+
+The application is intentionally designed for same-origin deployment; cross-origin API access is not part of its supported deployment model.
 
 ## Using the application
 
@@ -147,6 +149,8 @@ Sibling sectors are sorted alphabetically at each level. This reproduces the sup
 
 The rendered `<option>` labels still use non-breaking spaces for indentation, as the original file did. That is a deliberate limit rather than a leftover: browsers do not reliably apply `padding` or `text-indent` inside an `<option>`, so non-breaking spaces are the only indentation that renders consistently. The difference from the original is where the indentation comes from — Angular derives it from each sector's depth at render time, instead of it being stored in the sector names.
 
+The native multi-select is retained because the assignment explicitly asks for a sectors selectbox. This preserves native platform behavior and fidelity to the supplied form, with the tradeoff that hierarchy is conveyed visually rather than exposed as nested semantic structure.
+
 ### Submission storage
 
 Submissions and sectors have a many-to-many relationship through the `sector_submission` pivot table. This keeps the data normalized and allows each submission to contain multiple sectors.
@@ -171,7 +175,7 @@ With that in place Sanctum had no remaining role — this application has no tok
 
 ### Production hardening scope
 
-Laravel's API rate limiter allows 60 requests per minute per IP address. A production deployment should tune that limit to its traffic and operational requirements. A scheduled session-pruning job remains out of scope for this local technical assignment. Laravel's standard session expiry remains enabled here: database sessions expire after 120 idle minutes and expired rows are swept opportunistically by the framework's session-cleanup lottery.
+Laravel's API rate limiter uses Laravel's file cache and allows 60 requests per minute per IP address. A production deployment should tune that limit to its traffic and operational requirements. A scheduled session-pruning job remains out of scope for this local technical assignment. Laravel's standard session expiry remains enabled here: database sessions expire after 120 idle minutes and expired rows are swept opportunistically by the framework's session-cleanup lottery.
 
 ### Frontend structure
 
