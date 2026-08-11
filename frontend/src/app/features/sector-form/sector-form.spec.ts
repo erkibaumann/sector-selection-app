@@ -522,13 +522,20 @@ describe('SectorForm', () => {
     expect(nameInput?.value).toBe('Grace Hopper');
     expect(termsCheckbox?.checked).toBe(true);
 
-    expect(element.querySelector('details summary')?.textContent).toContain('1 sector selected');
-    expect(element.querySelector('.selected-sector-path')?.textContent).toContain(
-      'Manufacturing › Construction materials',
+    expect(element.querySelector('#selected-sectors-label')?.textContent).toContain(
+      '1 sector selected',
     );
+    expect(element.querySelector('.selected-sector-parent')?.textContent).toContain(
+      'Manufacturing',
+    );
+    expect(element.querySelector('.selected-sector-name')?.textContent).toContain(
+      'Construction materials',
+    );
+    // The checkbox is reachable without expanding anything by hand.
+    expect(element.querySelector<HTMLInputElement>('#sector-checkbox-19')?.checked).toBe(true);
   });
 
-  it('drops stale root ids while refilling so the next save removes them', () => {
+  it('drops stale category ids while refilling so the next save removes them', () => {
     existingSubmission = {
       name: 'Grace Hopper',
       sector_ids: [1, 19],

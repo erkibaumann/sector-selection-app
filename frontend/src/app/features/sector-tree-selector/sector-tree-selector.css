@@ -2,6 +2,76 @@
   display: block;
 }
 
+/* Selected sectors */
+
+.selected-sectors-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.selected-sector-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.selected-sector-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: 0.25rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.625rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+  background-color: var(--bs-tertiary-bg);
+}
+
+.selected-sector-text {
+  min-width: 0;
+  padding-block: 0.125rem;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.selected-sector-parent {
+  color: var(--bs-secondary-color);
+  font-size: 0.8125rem;
+}
+
+.selected-sector-remove {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bs-border-radius-sm);
+  background: transparent;
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.selected-sector-remove:hover,
+.selected-sector-remove:focus-visible {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+}
+
+/* Filter — the custom Clear button replaces the browser's native one. */
+
+.sector-filter input[type='search']::-webkit-search-cancel-button,
+.sector-filter input[type='search']::-webkit-search-decoration {
+  appearance: none;
+}
+
+/* Tree */
+
 .sector-tree-scroll {
   height: clamp(17rem, 45vh, 24rem);
   overflow: auto;
@@ -25,22 +95,54 @@
 .sector-node {
   display: flex;
   min-width: 0;
+  width: 100%;
   min-height: 2.75rem;
   align-items: flex-start;
   gap: 0.5rem;
 }
 
-.sector-toggle,
-.sector-toggle-placeholder {
-  flex: 0 0 2.75rem;
-  width: 2.75rem;
-  min-height: 2.75rem;
+.sector-category {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
 }
 
-.sector-toggle {
-  padding: 0;
-  font-size: 1.25rem;
-  line-height: 1;
+.sector-category .sector-node-name {
+  font-weight: 600;
+}
+
+.sector-category-button {
+  border-radius: 0.375rem;
+}
+
+.sector-category-button:hover .sector-node-name,
+.sector-category-button:focus-visible .sector-node-name {
+  text-decoration: underline;
+}
+
+.sector-chevron {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 1rem;
+  margin-inline: 0.375rem 0.25rem;
+  border-right: 0.125rem solid currentcolor;
+  border-bottom: 0.125rem solid currentcolor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease-in-out;
+}
+
+.sector-chevron-open {
+  margin-top: 0.875rem;
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sector-chevron {
+    transition: none;
+  }
 }
 
 .sector-checkbox {
@@ -48,6 +150,7 @@
   width: 1.2rem;
   height: 1.2rem;
   margin-top: 0.775rem;
+  margin-inline-start: 0.125rem;
 }
 
 .sector-node-name {
@@ -61,24 +164,6 @@ label.sector-node-name {
   cursor: pointer;
 }
 
-.selected-sectors summary {
-  min-height: 2.75rem;
-  padding: 0.6rem 0.75rem;
-  cursor: pointer;
-}
-
-.selected-sector {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.selected-sector-path {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 @media (max-width: 575.98px) {
   .sector-tree-list {
     padding-inline-start: 0.75rem;
@@ -86,10 +171,5 @@ label.sector-node-name {
 
   .sector-tree-root {
     padding-inline-start: 0.25rem;
-  }
-
-  .selected-sector {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }

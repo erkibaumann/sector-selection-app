@@ -94,7 +94,7 @@ The application is intentionally designed for same-origin deployment; cross-orig
 ## Using the application
 
 1. Enter a name.
-2. Expand the sector categories or filter by a name or full category path, then check one or more sectors. Top-level categories are navigation-only.
+2. Expand the categories or filter by a name or full category path, then check one or more leaf sectors. Sectors with children are navigation-only categories.
 3. Agree to the terms.
 4. Select **Save**.
 
@@ -132,12 +132,12 @@ The submission request body has this shape:
 ```json
 {
   "name": "Ada Lovelace",
-  "sector_ids": [6, 19],
+  "sector_ids": [19, 342],
   "agreed_to_terms": true
 }
 ```
 
-Laravel requires a name of at most 255 characters, at least one distinct existing non-root sector ID, and acceptance of the terms. Invalid requests receive a `422 Unprocessable Content` response with validation errors.
+Laravel requires a name of at most 255 characters, at least one distinct existing leaf-sector ID, and acceptance of the terms. Invalid requests receive a `422 Unprocessable Content` response with validation errors.
 
 ## Design decisions
 
@@ -147,9 +147,9 @@ Sectors use a self-referencing `parent_id` instead of storing indentation in the
 
 Sibling sectors are sorted alphabetically at each level. This reproduces the supplied ordering without adding a separate sort column.
 
-Top-level sectors are category headings used only for navigation. Every sector below them is independently selectable, including intermediate sectors that also contain children. Selecting a parent never changes any descendant selection, so there is no hidden propagation or tri-state behavior. Laravel enforces the same non-root rule when saving. If an older stored submission contains a root ID, the form ignores that ID during refill and omits it on the next save.
+Every sector with children is a category heading used only for navigation. Only leaf sectors are selectable, and each selection remains independent, with no propagation or tri-state behavior. Laravel enforces the same leaf-only rule when saving. If an older stored submission contains a category ID, the form ignores that ID during refill and omits it on the next save.
 
-The selector uses native checkboxes, buttons, nested lists, and a fixed-height responsive scroll area rather than a native multi-select or a third-party UI dependency. Categories start collapsed. Filtering is case-insensitive across each sector's full breadcrumb path, preserves the ancestors needed for context, shows a complete subtree when its category matches, and temporarily expands matching branches without changing the user's normal expansion state. A collapsed native `<details>` summary lists selected sectors in tree order with their full paths and individual Remove buttons.
+The selector uses native checkboxes, buttons, nested lists, and a fixed-height responsive scroll area rather than a native multi-select or a third-party UI dependency. Categories start collapsed, while categories leading to a restored selection open automatically. Filtering is case-insensitive across each sector's full breadcrumb path, preserves the ancestors needed for context, shows a complete subtree when its category matches, and temporarily expands matching branches without changing the user's normal expansion state. Selected sectors appear above the filter as removable pills in tree order, using the immediate parent for visible context and the full path in each Remove button's accessible label. A Clear all action removes every selection at once.
 
 ### Submission storage
 

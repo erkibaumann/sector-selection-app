@@ -74,22 +74,26 @@ it('rejects sector ids that do not exist', function () {
     ])->assertJsonValidationErrors('sector_ids.0');
 });
 
-it('rejects top-level sector ids', function () {
+it('rejects category sector ids', function (int $sectorId) {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
         'name' => 'John Doe',
-        'sector_ids' => [1],
+        'sector_ids' => [$sectorId],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJsonValidationErrors('sector_ids.0');
-});
+})->with([
+    'top-level category' => 1,      // Manufacturing
+    'intermediate category' => 6,   // Manufacturing > Food and Beverage
+    'deep category' => 559,         // ... > Plastic and Rubber > Plastic processing technology
+]);
 
-it('accepts selectable sectors whether or not they have children', function () {
+it('accepts leaf sectors at any depth', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
         'name' => 'John Doe',
-        'sector_ids' => [6, 342],
+        'sector_ids' => [19, 342, 53],
         'agreed_to_terms' => true,
     ])->assertCreated();
 });

@@ -28,13 +28,13 @@ describe('SectorTreeSelector', () => {
     element = fixture.nativeElement as HTMLElement;
   });
 
-  const expansionButton = (sectorId: number): HTMLButtonElement => {
+  const categoryButton = (sectorId: number): HTMLButtonElement => {
     const button = element.querySelector<HTMLButtonElement>(
       `button[aria-controls="sector-children-${sectorId}"]`,
     );
 
     if (!button) {
-      throw new Error(`Expected an expansion button for sector ${sectorId}.`);
+      throw new Error(`Expected a category button for sector ${sectorId}.`);
     }
 
     return button;
@@ -62,6 +62,14 @@ describe('SectorTreeSelector', () => {
     fixture.detectChanges();
   };
 
+  const emitted = (): number[][] => {
+    const selections: number[][] = [];
+
+    fixture.componentInstance.selectedIdsChange.subscribe((ids) => selections.push(ids));
+
+    return selections;
+  };
+
   it('builds an alphabetically ordered nested hierarchy', () => {
     const rootNames = Array.from(element.querySelectorAll('.sector-tree-root > li')).map((item) =>
       item
@@ -71,7 +79,7 @@ describe('SectorTreeSelector', () => {
 
     expect(rootNames).toEqual(['Manufacturing', 'Service']);
 
-    expansionButton(1).click();
+    categoryButton(1).click();
     fixture.detectChanges();
 
     const childNames = Array.from(
@@ -81,47 +89,38 @@ describe('SectorTreeSelector', () => {
     expect(childNames).toEqual(['Construction materials', 'Furniture']);
   });
 
-  it('makes only non-root sectors selectable, including intermediate sectors', () => {
+  it('makes only leaf sectors selectable', () => {
+    // Roots and intermediate categories are navigation only.
     expect(element.querySelector('#sector-checkbox-1')).toBeNull();
 
-    expansionButton(1).click();
+    categoryButton(1).click();
     fixture.detectChanges();
 
-    expect(checkbox(13)).toBeTruthy();
-    expect(expansionButton(13)).toBeTruthy();
+    expect(element.querySelector('#sector-checkbox-13')).toBeNull();
+    expect(categoryButton(13)).toBeTruthy();
+    expect(checkbox(19)).toBeTruthy();
+
+    categoryButton(13).click();
+    fixture.detectChanges();
+
+    expect(checkbox(385)).toBeTruthy();
+    expect(checkbox(392)).toBeTruthy();
   });
 
-  it('keeps parent and child selection independent', () => {
-    const emittedSelections: number[][] = [];
-    fixture.componentInstance.selectedIdsChange.subscribe((ids) => emittedSelections.push(ids));
-
-    expansionButton(1).click();
-    fixture.detectChanges();
-    checkbox(13).click();
-    fixture.componentRef.setInput('selectedIds', emittedSelections.at(-1));
-    fixture.detectChanges();
-    expansionButton(13).click();
-    fixture.detectChanges();
-
-    expect(emittedSelections.at(-1)).toEqual([13]);
-    expect(checkbox(13).checked).toBe(true);
-    expect(checkbox(385).checked).toBe(false);
-    expect(checkbox(392).checked).toBe(false);
-  });
-
-  it('expands and collapses categories with native button relationships', () => {
-    const button = expansionButton(1);
-    const controlledId = button.getAttribute('aria-controls');
-    const controlledList = element.querySelector<HTMLUListElement>(`#${controlledId}`);
+  it('expands a category by clicking the row itself', () => {
+    const button = categoryButton(1);
+    const controlledList = element.querySelector<HTMLUListElement>('#sector-children-1');
 
     expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(controlledList).not.toBeNull();
+    expect(button.querySelector('.sector-chevron')).not.toBeNull();
+    expect(button.querySelector('.sector-chevron-open')).toBeNull();
     expect(controlledList?.hidden).toBe(true);
 
     button.click();
     fixture.detectChanges();
 
     expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.querySelector('.sector-chevron-open')).not.toBeNull();
     expect(controlledList?.hidden).toBe(false);
 
     button.click();
@@ -131,41 +130,68 @@ describe('SectorTreeSelector', () => {
     expect(controlledList?.hidden).toBe(true);
   });
 
-  it('filters case-insensitively by full path and restores expansion state', () => {
-    expansionButton(1).click();
+  it('expands the categories leading to already selected sectors', () => {
+    fixture.componentRef.setInput('selectedIds', [392]);
     fixture.detectChanges();
-    expect(expansionButton(13).getAttribute('aria-expanded')).toBe('false');
 
+    expect(element.querySelector<HTMLUListElement>('#sector-children-1')?.hidden).toBe(false);
+    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(false);
+    expect(checkbox(392).checked).toBe(true);
+  });
+
+  it('does not re-expand a category the user collapsed after a later change', () => {
+    fixture.componentRef.setInput('selectedIds', [392]);
+    fixture.detectChanges();
+
+    categoryButton(13).click();
+    fixture.detectChanges();
+    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
+
+    // A change elsewhere must not undo the collapse.
+    fixture.componentRef.setInput('selectedIds', [392, 19]);
+    fixture.detectChanges();
+
+    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
+  });
+
+  it('filters case-insensitively by full path and renders categories as static rows', () => {
     filter('MANUFACTURING › FURNITURE › BEDROOM');
 
     expect(element.textContent).toContain('1 sector found.');
-    expect(expansionButton(1).getAttribute('aria-expanded')).toBe('true');
-    expect(expansionButton(13).getAttribute('aria-expanded')).toBe('true');
     expect(checkbox(385)).toBeTruthy();
     expect(element.textContent).not.toContain('Office');
+    // Everything is forced open while filtering, so there is nothing to toggle.
+    expect(element.querySelector('button[aria-controls="sector-children-1"]')).toBeNull();
+    expect(element.querySelectorAll('.sector-category .sector-chevron-open').length).toBe(2);
 
     element.querySelector<HTMLButtonElement>('.sector-filter button')?.click();
     fixture.detectChanges();
 
-    expect(expansionButton(1).getAttribute('aria-expanded')).toBe('true');
-    expect(expansionButton(13).getAttribute('aria-expanded')).toBe('false');
-    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
+    expect(categoryButton(1).getAttribute('aria-expanded')).toBe('false');
   });
 
   it('shows the complete subtree when a category matches', () => {
     filter('furniture');
 
-    expect(element.textContent).toContain('3 sectors found.');
+    expect(element.textContent).toContain('2 sectors found.');
     expect(element.textContent).toContain('Furniture');
     expect(element.textContent).toContain('Bedroom');
     expect(element.textContent).toContain('Office');
+  });
+
+  it('counts only selectable sectors, matching what the tree shows', () => {
+    filter('bedroom');
+
+    // Furniture is revealed as a category but is not a selectable result.
+    expect(element.textContent).toContain('1 sector found.');
+    expect(element.querySelectorAll('.sector-checkbox').length).toBe(1);
   });
 
   it('reports a polite count and clear no-results state', () => {
     const results = element.querySelector('#sector-filter-results');
 
     expect(results?.getAttribute('aria-live')).toBe('polite');
-    expect(results?.textContent).toContain('5 sectors available.');
+    expect(results?.textContent).toContain('4 sectors available.');
 
     filter('not a real sector');
 
@@ -174,43 +200,68 @@ describe('SectorTreeSelector', () => {
     expect(element.querySelector<HTMLUListElement>('#sector-tree-list')?.hidden).toBe(true);
   });
 
-  it('lists unique selections in tree order with full paths and supports removal', () => {
-    const emittedSelections: number[][] = [];
-    fixture.componentInstance.selectedIdsChange.subscribe((ids) => emittedSelections.push(ids));
+  it('keeps selections independent across the hierarchy', () => {
+    const selections = emitted();
+
+    fixture.componentRef.setInput('selectedIds', [385]);
+    fixture.detectChanges();
+    checkbox(392).click();
+
+    expect(selections.at(-1)).toEqual([385, 392]);
+    expect(checkbox(385).checked).toBe(true);
+  });
+
+  it('shows selections as pills with the immediate parent and no disclosure', () => {
     fixture.componentRef.setInput('selectedIds', [392, 19, 392]);
     fixture.detectChanges();
 
-    const details = element.querySelector('details');
-    const selectedPaths = Array.from(element.querySelectorAll('.selected-sector-path')).map(
-      (path) => path.textContent?.trim(),
+    expect(element.querySelector('details')).toBeNull();
+    expect(element.querySelector('#selected-sectors-label')?.textContent).toContain(
+      '2 sectors selected',
     );
 
-    expect(details?.open).toBe(false);
-    expect(details?.querySelector('summary')?.textContent).toContain('2 sectors selected');
-    expect(selectedPaths).toEqual([
-      'Manufacturing › Construction materials',
-      'Manufacturing › Furniture › Office',
-    ]);
-
-    const removeOffice = element.querySelector<HTMLButtonElement>(
-      'button[aria-label="Remove Manufacturing › Furniture › Office"]',
+    const pills = Array.from(element.querySelectorAll('.selected-sector-pill'));
+    const parents = pills.map((pill) =>
+      pill.querySelector('.selected-sector-parent')?.textContent?.trim(),
     );
-    removeOffice?.click();
+    const names = pills.map((pill) =>
+      pill.querySelector('.selected-sector-name')?.textContent?.trim(),
+    );
 
-    expect(emittedSelections.at(-1)).toEqual([19]);
+    expect(parents).toEqual(['Manufacturing ›', 'Furniture ›']);
+    expect(names).toEqual(['Construction materials', 'Office']);
   });
 
-  it('emits unique selected ids in stable tree order', () => {
-    const emittedSelections: number[][] = [];
-    fixture.componentInstance.selectedIdsChange.subscribe((ids) => emittedSelections.push(ids));
-    fixture.componentRef.setInput('selectedIds', [392]);
+  it('removes a single pill by its full path and clears them all', () => {
+    const selections = emitted();
+
+    fixture.componentRef.setInput('selectedIds', [19, 392]);
     fixture.detectChanges();
 
-    expansionButton(1).click();
-    fixture.detectChanges();
-    checkbox(19).click();
+    element
+      .querySelector<HTMLButtonElement>(
+        'button[aria-label="Remove Manufacturing › Furniture › Office"]',
+      )
+      ?.click();
 
-    expect(emittedSelections.at(-1)).toEqual([19, 392]);
+    expect(selections.at(-1)).toEqual([19]);
+
+    element.querySelectorAll<HTMLButtonElement>('.selected-sectors button').forEach((button) => {
+      if (button.textContent?.includes('Clear all')) {
+        button.click();
+      }
+    });
+
+    expect(selections.at(-1)).toEqual([]);
+  });
+
+  it('announces an empty selection state', () => {
+    const label = element.querySelector('#selected-sectors-label');
+
+    expect(label?.getAttribute('aria-live')).toBe('polite');
+    expect(label?.textContent).toContain('0 sectors selected');
+    expect(element.textContent).toContain('Nothing selected yet.');
+    expect(element.querySelector('.selected-sector-pill')).toBeNull();
   });
 
   it('focuses the filter and exposes group, button, and checkbox ARIA relationships', () => {
@@ -228,7 +279,7 @@ describe('SectorTreeSelector', () => {
     expect(group?.getAttribute('aria-invalid')).toBe('true');
     expect(element.querySelector('[role="tree"]')).toBeNull();
 
-    expansionButton(1).click();
+    categoryButton(1).click();
     fixture.detectChanges();
 
     const constructionCheckbox = checkbox(19);

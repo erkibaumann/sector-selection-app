@@ -203,10 +203,11 @@ export class SectorForm implements OnInit {
     selectedIds: readonly number[],
     sectors: readonly Sector[],
   ): number[] {
-    const selectableIds = new Set(
-      sectors.filter((sector) => sector.parent_id !== null).map((sector) => sector.id),
+    const parentIds = new Set(sectors.map((sector) => sector.parent_id));
+    const leafIds = new Set(
+      sectors.filter((sector) => !parentIds.has(sector.id)).map((sector) => sector.id),
     );
 
-    return [...new Set(selectedIds)].filter((id) => selectableIds.has(id));
+    return [...new Set(selectedIds)].filter((id) => leafIds.has(id));
   }
 }

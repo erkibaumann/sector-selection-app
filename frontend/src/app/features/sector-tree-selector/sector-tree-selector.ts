@@ -1,22 +1,29 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, ElementRef, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 
 import { Sector } from '../../models/sector';
 
 interface SectorTreeNode extends Sector {
   children: SectorTreeNode[];
   path: string;
+  parentName: string;
   selectable: boolean;
 }
 
 interface SectorTree {
   roots: SectorTreeNode[];
   orderedNodes: SectorTreeNode[];
-}
-
-interface VisibleSectorTreeNode {
-  node: SectorTreeNode;
-  children: VisibleSectorTreeNode[];
+  parentIdById: ReadonlyMap<number, number | null>;
 }
 
 const PATH_SEPARATOR = ' › ';
@@ -36,8 +43,11 @@ export class SectorTreeSelector {
 
   readonly selectedIdsChange = output<number[]>();
 
+  protected readonly pathSeparator = PATH_SEPARATOR;
+
   private readonly filterInput = viewChild<ElementRef<HTMLInputElement>>('filterInput');
   private readonly expandedIds = signal<ReadonlySet<number>>(new Set());
+  private readonly revealedIds = new Set<number>();
 
   protected readonly filterText = signal('');
   protected readonly normalizedFilter = computed(() =>
@@ -50,17 +60,39 @@ export class SectorTreeSelector {
   protected readonly selectedNodes = computed(() =>
     this.tree().orderedNodes.filter((node) => node.selectable && this.selectedIdSet().has(node.id)),
   );
-  protected readonly visibleRoots = computed<VisibleSectorTreeNode[]>(() => {
+
+  /** `null` means no filter is active, so every node is visible. */
+  protected readonly visibleIds = computed<ReadonlySet<number> | null>(() => {
     const query = this.normalizedFilter();
 
     if (query === '') {
-      return this.tree().roots.map((node) => this.completeSubtree(node));
+      return null;
     }
 
-    return this.tree()
-      .roots.map((node) => this.filteredSubtree(node, query))
-      .filter((node): node is VisibleSectorTreeNode => node !== null);
+    const { orderedNodes, parentIdById } = this.tree();
+    const visible = new Set<number>();
+
+    // A node's path contains its ancestors' names, so descendants of a match
+    // match too. Only the ancestors of a match need to be revealed.
+    for (const node of orderedNodes) {
+      if (!node.path.toLocaleLowerCase().includes(query)) {
+        continue;
+      }
+
+      visible.add(node.id);
+
+      for (
+        let ancestorId = parentIdById.get(node.id) ?? null;
+        ancestorId !== null;
+        ancestorId = parentIdById.get(ancestorId) ?? null
+      ) {
+        visible.add(ancestorId);
+      }
+    }
+
+    return visible;
   });
+
   protected readonly resultCount = computed(() => {
     const query = this.normalizedFilter();
 
@@ -71,6 +103,17 @@ export class SectorTreeSelector {
   protected readonly availableCount = computed(
     () => this.tree().orderedNodes.filter((node) => node.selectable).length,
   );
+
+  constructor() {
+    // Reveal the categories leading to whatever is already selected, so a
+    // restored submission can be edited without hunting for it.
+    effect(() => {
+      const selectedIds = this.selectedIds();
+      const { parentIdById } = this.tree();
+
+      untracked(() => this.expandAncestors(selectedIds, parentIdById));
+    });
+  }
 
   focus(): void {
     this.filterInput()?.nativeElement.focus();
@@ -92,10 +135,6 @@ export class SectorTreeSelector {
   }
 
   protected toggleExpanded(id: number): void {
-    if (this.isFiltering()) {
-      return;
-    }
-
     const expandedIds = new Set(this.expandedIds());
 
     if (expandedIds.has(id)) {
@@ -109,6 +148,12 @@ export class SectorTreeSelector {
 
   protected isExpanded(node: SectorTreeNode): boolean {
     return node.children.length > 0 && (this.isFiltering() || this.expandedIds().has(node.id));
+  }
+
+  protected isVisible(id: number): boolean {
+    const visibleIds = this.visibleIds();
+
+    return visibleIds === null || visibleIds.has(id);
   }
 
   protected isSelected(id: number): boolean {
@@ -135,12 +180,48 @@ export class SectorTreeSelector {
     this.emitInTreeOrder(selectedIds);
   }
 
+  protected clearSelection(): void {
+    this.emitInTreeOrder(new Set());
+  }
+
   protected checkboxId(id: number): string {
     return `sector-checkbox-${id}`;
   }
 
   protected childrenId(id: number): string {
     return `sector-children-${id}`;
+  }
+
+  /**
+   * Reveals each selection once. Re-expanding on every change would fight a
+   * user who deliberately collapsed a category holding a selected sector.
+   */
+  private expandAncestors(
+    selectedIds: readonly number[],
+    parentIdById: ReadonlyMap<number, number | null>,
+  ): void {
+    const expandedIds = new Set(this.expandedIds());
+    const initialSize = expandedIds.size;
+
+    for (const selectedId of selectedIds) {
+      if (this.revealedIds.has(selectedId)) {
+        continue;
+      }
+
+      this.revealedIds.add(selectedId);
+
+      for (
+        let ancestorId = parentIdById.get(selectedId) ?? null;
+        ancestorId !== null;
+        ancestorId = parentIdById.get(ancestorId) ?? null
+      ) {
+        expandedIds.add(ancestorId);
+      }
+    }
+
+    if (expandedIds.size !== initialSize) {
+      this.expandedIds.set(expandedIds);
+    }
   }
 
   private emitInTreeOrder(selectedIds: ReadonlySet<number>): void {
@@ -159,13 +240,17 @@ export class SectorTreeSelector {
         ...sector,
         children: [],
         path: '',
-        selectable: sector.parent_id !== null,
+        parentName: '',
+        selectable: false,
       });
     }
 
     const roots: SectorTreeNode[] = [];
+    const parentIdById = new Map<number, number | null>();
 
     for (const node of nodesById.values()) {
+      parentIdById.set(node.id, node.parent_id);
+
       if (node.parent_id === null) {
         roots.push(node);
       } else {
@@ -177,37 +262,24 @@ export class SectorTreeSelector {
       left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
     const orderedNodes: SectorTreeNode[] = [];
 
-    const orderSubtree = (nodes: SectorTreeNode[], parentPath: string): void => {
+    const orderSubtree = (
+      nodes: SectorTreeNode[],
+      parentPath: string,
+      parentName: string,
+    ): void => {
       nodes.sort(compareByName);
 
       for (const node of nodes) {
         node.path = parentPath === '' ? node.name : `${parentPath}${PATH_SEPARATOR}${node.name}`;
+        node.parentName = parentName;
+        node.selectable = node.children.length === 0;
         orderedNodes.push(node);
-        orderSubtree(node.children, node.path);
+        orderSubtree(node.children, node.path, node.name);
       }
     };
 
-    orderSubtree(roots, '');
+    orderSubtree(roots, '', '');
 
-    return { roots, orderedNodes };
-  }
-
-  private completeSubtree(node: SectorTreeNode): VisibleSectorTreeNode {
-    return {
-      node,
-      children: node.children.map((child) => this.completeSubtree(child)),
-    };
-  }
-
-  private filteredSubtree(node: SectorTreeNode, query: string): VisibleSectorTreeNode | null {
-    if (node.path.toLocaleLowerCase().includes(query)) {
-      return this.completeSubtree(node);
-    }
-
-    const children = node.children
-      .map((child) => this.filteredSubtree(child, query))
-      .filter((child): child is VisibleSectorTreeNode => child !== null);
-
-    return children.length > 0 ? { node, children } : null;
+    return { roots, orderedNodes, parentIdById };
   }
 }

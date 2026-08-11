@@ -7,6 +7,47 @@
   [attr.aria-describedby]="describedBy()"
   [attr.aria-invalid]="invalid()"
 >
+  <div class="selected-sectors mb-3">
+    <div class="selected-sectors-header">
+      <p class="form-label small fw-semibold mb-0" id="selected-sectors-label" aria-live="polite">
+        {{ selectedNodes().length }}
+        {{ selectedNodes().length === 1 ? 'sector' : 'sectors' }} selected
+      </p>
+
+      @if (selectedNodes().length > 0) {
+        <button class="btn btn-sm btn-link p-0" type="button" (click)="clearSelection()">
+          Clear all
+        </button>
+      }
+    </div>
+
+    @if (selectedNodes().length === 0) {
+      <p class="form-text mb-0">Nothing selected yet. Pick one or more sectors below.</p>
+    } @else {
+      <ul class="selected-sector-pills list-unstyled mb-0" aria-labelledby="selected-sectors-label">
+        @for (node of selectedNodes(); track node.id) {
+          <li class="selected-sector-pill">
+            <span class="selected-sector-text">
+              @if (node.parentName !== '') {
+                <span class="selected-sector-parent">{{ node.parentName }}{{ pathSeparator }}</span>
+              }
+              <span class="selected-sector-name">{{ node.name }}</span>
+            </span>
+
+            <button
+              class="selected-sector-remove"
+              type="button"
+              [attr.aria-label]="'Remove ' + node.path"
+              (click)="removeSelection(node.id)"
+            >
+              <span aria-hidden="true">&#10005;</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
   <div class="sector-filter mb-2">
     <label class="form-label small fw-semibold" for="sector-filter">Filter sectors</label>
 
@@ -49,97 +90,63 @@
       id="sector-tree-list"
       [hidden]="isFiltering() && resultCount() === 0"
     >
-      @for (visibleNode of visibleRoots(); track visibleNode.node.id) {
-        <ng-container
-          [ngTemplateOutlet]="treeNode"
-          [ngTemplateOutletContext]="{ $implicit: visibleNode }"
-        />
+      @for (root of tree().roots; track root.id) {
+        @if (isVisible(root.id)) {
+          <ng-container
+            [ngTemplateOutlet]="treeNode"
+            [ngTemplateOutletContext]="{ $implicit: root }"
+          />
+        }
       }
     </ul>
   </div>
-
-  <details class="selected-sectors mt-2 rounded border">
-    <summary class="fw-semibold">
-      {{ selectedNodes().length }}
-      {{ selectedNodes().length === 1 ? 'sector' : 'sectors' }} selected
-    </summary>
-
-    @if (selectedNodes().length === 0) {
-      <p class="mb-0 p-3 pt-2 text-body-secondary">No sectors selected yet.</p>
-    } @else {
-      <ul class="list-unstyled mb-0 px-3 pb-3">
-        @for (node of selectedNodes(); track node.id) {
-          <li class="selected-sector py-2 border-top">
-            <span class="selected-sector-path">{{ node.path }}</span>
-            <button
-              class="btn btn-sm btn-outline-danger"
-              type="button"
-              [attr.aria-label]="'Remove ' + node.path"
-              (click)="removeSelection(node.id)"
-            >
-              Remove
-            </button>
-          </li>
-        }
-      </ul>
-    }
-  </details>
 </div>
 
-<ng-template #treeNode let-visibleNode>
+<ng-template #treeNode let-node>
   <li>
-    <div class="sector-node">
-      @if (visibleNode.node.children.length > 0) {
-        <button
-          class="sector-toggle btn btn-sm btn-light"
-          type="button"
-          [disabled]="isFiltering()"
-          [attr.aria-expanded]="isExpanded(visibleNode.node)"
-          [attr.aria-controls]="childrenId(visibleNode.node.id)"
-          (click)="toggleExpanded(visibleNode.node.id)"
-        >
-          <span aria-hidden="true">{{ isExpanded(visibleNode.node) ? '−' : '+' }}</span>
-          <span class="visually-hidden">
-            {{ isExpanded(visibleNode.node) ? 'Collapse' : 'Expand' }}
-            {{ visibleNode.node.name }}
-          </span>
-        </button>
-      } @else {
-        <span class="sector-toggle-placeholder" aria-hidden="true"></span>
-      }
-
-      @if (visibleNode.node.selectable) {
+    @if (node.selectable) {
+      <div class="sector-node sector-leaf">
         <input
           class="form-check-input sector-checkbox"
           type="checkbox"
-          [id]="checkboxId(visibleNode.node.id)"
-          [checked]="isSelected(visibleNode.node.id)"
-          [attr.data-sector-id]="visibleNode.node.id"
-          (change)="onSelectionChange(visibleNode.node.id, $event)"
+          [id]="checkboxId(node.id)"
+          [checked]="isSelected(node.id)"
+          [attr.data-sector-id]="node.id"
+          (change)="onSelectionChange(node.id, $event)"
         />
-        <label
-          class="sector-node-name"
-          [class.fw-medium]="visibleNode.node.children.length > 0"
-          [for]="checkboxId(visibleNode.node.id)"
-        >
-          {{ visibleNode.node.name }}
-        </label>
-      } @else {
-        <span class="sector-node-name fw-semibold">{{ visibleNode.node.name }}</span>
-      }
-    </div>
-
-    @if (visibleNode.children.length > 0) {
-      <ul
-        class="sector-tree-list"
-        [id]="childrenId(visibleNode.node.id)"
-        [hidden]="!isExpanded(visibleNode.node)"
+        <label class="sector-node-name" [for]="checkboxId(node.id)">{{ node.name }}</label>
+      </div>
+    } @else if (isFiltering()) {
+      <p class="sector-node sector-category mb-0">
+        <span class="sector-chevron sector-chevron-open" aria-hidden="true"></span>
+        <span class="sector-node-name">{{ node.name }}</span>
+      </p>
+    } @else {
+      <button
+        class="sector-node sector-category sector-category-button"
+        type="button"
+        [attr.aria-expanded]="isExpanded(node)"
+        [attr.aria-controls]="childrenId(node.id)"
+        (click)="toggleExpanded(node.id)"
       >
-        @for (child of visibleNode.children; track child.node.id) {
-          <ng-container
-            [ngTemplateOutlet]="treeNode"
-            [ngTemplateOutletContext]="{ $implicit: child }"
-          />
+        <span
+          class="sector-chevron"
+          [class.sector-chevron-open]="isExpanded(node)"
+          aria-hidden="true"
+        ></span>
+        <span class="sector-node-name">{{ node.name }}</span>
+      </button>
+    }
+
+    @if (node.children.length > 0) {
+      <ul class="sector-tree-list" [id]="childrenId(node.id)" [hidden]="!isExpanded(node)">
+        @for (child of node.children; track child.id) {
+          @if (isVisible(child.id)) {
+            <ng-container
+              [ngTemplateOutlet]="treeNode"
+              [ngTemplateOutletContext]="{ $implicit: child }"
+            />
+          }
         }
       </ul>
     }
