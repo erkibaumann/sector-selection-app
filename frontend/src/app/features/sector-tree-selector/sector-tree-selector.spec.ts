@@ -164,8 +164,8 @@ describe('SectorTreeSelector', () => {
     expect(element.querySelector('button[aria-controls="sector-children-1"]')).toBeNull();
     expect(element.querySelectorAll('.sector-category .sector-chevron-open').length).toBe(2);
 
-    element.querySelector<HTMLButtonElement>('.sector-filter button')?.click();
-    fixture.detectChanges();
+    // Clearing the field is what the browser's native search control does.
+    filter('');
 
     expect(categoryButton(1).getAttribute('aria-expanded')).toBe('false');
   });
@@ -255,11 +255,74 @@ describe('SectorTreeSelector', () => {
     expect(selections.at(-1)).toEqual([]);
   });
 
-  it('renders a pill for every selection', () => {
+  it('renders a pill for every selection up to the cap', () => {
     fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
     fixture.detectChanges();
 
     expect(element.querySelectorAll('.selected-sector-pill').length).toBe(3);
+    expect(element.querySelector('.selected-sector-toggle')).toBeNull();
+  });
+
+  it('caps the pills at four and expands them on request', () => {
+    const manyLeaves: Sector[] = [
+      { id: 1, parent_id: null, name: 'Manufacturing' },
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: 100 + index,
+        parent_id: 1,
+        name: `Sector ${index}`,
+      })),
+    ];
+
+    fixture.componentRef.setInput('sectors', manyLeaves);
+    fixture.componentRef.setInput(
+      'selectedIds',
+      manyLeaves.filter((sector) => sector.parent_id !== null).map((sector) => sector.id),
+    );
+    fixture.detectChanges();
+
+    expect(element.querySelectorAll('.selected-sector-pill').length).toBe(4);
+
+    const toggle = (): HTMLButtonElement => {
+      const button = element.querySelector<HTMLButtonElement>('.selected-sector-toggle');
+
+      if (!button) {
+        throw new Error('Expected the show more/fewer toggle.');
+      }
+
+      return button;
+    };
+
+    expect(toggle().textContent).toContain('+2 more');
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+
+    toggle().click();
+    fixture.detectChanges();
+
+    expect(element.querySelectorAll('.selected-sector-pill').length).toBe(6);
+    expect(toggle().textContent).toContain('Show fewer');
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+
+    toggle().click();
+    fixture.detectChanges();
+
+    expect(element.querySelectorAll('.selected-sector-pill').length).toBe(4);
+  });
+
+  it('clears the filter from an explicit button, not only the native control', () => {
+    expect(element.querySelector('.sector-filter-input button')).toBeNull();
+
+    filter('bedroom');
+
+    const clearButton = element.querySelector<HTMLButtonElement>('.sector-filter-input button');
+
+    expect(clearButton?.textContent).toContain('Clear');
+
+    clearButton?.click();
+    fixture.detectChanges();
+
+    expect(element.querySelector<HTMLInputElement>('#sector-filter')?.value).toBe('');
+    expect(element.textContent).toContain('4 sectors available.');
+    expect(document.activeElement).toBe(element.querySelector('#sector-filter'));
   });
 
   it('expands and collapses every category at once', () => {
@@ -301,13 +364,54 @@ describe('SectorTreeSelector', () => {
     expect(element.textContent).not.toContain('Collapse all');
   });
 
+  it('keeps focus in the pill list after removing one', async () => {
+    fixture.componentInstance.selectedIdsChange.subscribe((ids) =>
+      fixture.componentRef.setInput('selectedIds', ids),
+    );
+    fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
+    fixture.detectChanges();
+
+    const removeButtons = () =>
+      Array.from(element.querySelectorAll<HTMLButtonElement>('.selected-sector-remove'));
+
+    removeButtons()[1].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The button at that position is gone, so its replacement takes focus.
+    expect(removeButtons().length).toBe(2);
+    expect(document.activeElement).toBe(removeButtons()[1]);
+  });
+
+  it('returns focus to the filter when the last pill goes', async () => {
+    fixture.componentInstance.selectedIdsChange.subscribe((ids) =>
+      fixture.componentRef.setInput('selectedIds', ids),
+    );
+    fixture.componentRef.setInput('selectedIds', [19]);
+    fixture.detectChanges();
+
+    element.querySelector<HTMLButtonElement>('.selected-sector-remove')?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(element.querySelector('.selected-sector-remove')).toBeNull();
+    expect(document.activeElement).toBe(element.querySelector('#sector-filter'));
+  });
+
   it('announces an empty selection state', () => {
     const label = element.querySelector('#selected-sectors-label');
 
     expect(label?.getAttribute('aria-live')).toBe('polite');
-    expect(label?.textContent).toContain('0 sectors selected');
-    expect(element.textContent).toContain('Nothing selected yet.');
+    // The empty state is the label itself, not a second line repeating it.
+    expect(label?.textContent).toContain('Nothing selected yet.');
+    expect(label?.textContent).not.toContain('0 sectors');
     expect(element.querySelector('.selected-sector-pill')).toBeNull();
+
+    fixture.componentRef.setInput('selectedIds', [19]);
+    fixture.detectChanges();
+
+    expect(label?.textContent).toContain('1 sector selected');
+    expect(label?.textContent).not.toContain('Nothing selected yet.');
   });
 
   it('focuses the filter and exposes group, button, and checkbox ARIA relationships', () => {

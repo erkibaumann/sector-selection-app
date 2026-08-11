@@ -9,7 +9,8 @@
         <header class="mb-4">
           <h1 class="h2 mb-2" id="sector-form-title">Sector selection</h1>
           <p class="mb-0 text-body-secondary">
-            Please enter your name and pick the sectors you are currently involved in.
+            Save your name and the sectors you work in. You can change your answers at any time
+            during this session.
           </p>
         </header>
 
@@ -21,132 +22,164 @@
             <button class="btn btn-outline-danger" type="button" (click)="load()">Try again</button>
           </div>
         } @else {
+          @if (restoredSubmission()) {
+            <p class="alert alert-info" role="status">
+              You saved this form earlier in this session. Change anything you like and save again.
+            </p>
+          }
+
+          <p class="form-text mt-0 mb-4">All fields are required.</p>
+
           <form class="d-grid gap-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+            @if (submitFailed() && hasErrors()) {
+              <p class="alert alert-danger mb-0" role="alert">
+                Please correct the highlighted fields.
+              </p>
+            }
+
             <fieldset class="d-grid gap-4" [disabled]="saving()">
+              <legend class="visually-hidden">Your details</legend>
+
               <div>
+                @let nameErrors = errorMessages('name');
+
                 <label class="form-label fw-semibold" for="name">Your name</label>
 
                 <input
-                  class="form-control"
-                  [class.is-invalid]="showsError(form.controls.name)"
-                  [attr.aria-invalid]="showsError(form.controls.name)"
+                  class="name-input form-control"
+                  [class.is-invalid]="nameErrors.length > 0"
+                  [attr.aria-invalid]="nameErrors.length > 0"
                   #nameInput
                   id="name"
                   name="name"
                   type="text"
                   maxlength="255"
                   formControlName="name"
-                  [attr.aria-describedby]="showsError(form.controls.name) ? 'name-error' : null"
+                  [attr.aria-describedby]="nameErrors.length > 0 ? 'name-error' : null"
                   autocomplete="name"
+                  autocapitalize="words"
+                  spellcheck="false"
                   required
                 />
 
-                @if (form.controls.name.touched && form.controls.name.invalid) {
-                  <div class="invalid-feedback d-block" id="name-error" role="alert">
-                    @if (serverErrors(form.controls.name); as errors) {
-                      @for (error of errors; track error) {
-                        {{ error }}
-                      }
-                    } @else if (form.controls.name.hasError('required')) {
-                      Your name is required.
-                    } @else if (form.controls.name.hasError('maxlength')) {
-                      Name must not exceed 255 characters.
+                @if (nameErrors.length > 0) {
+                  <div class="invalid-feedback d-block" id="name-error">
+                    @for (message of nameErrors; track message) {
+                      {{ message }}
                     }
                   </div>
                 }
               </div>
 
               <div>
-                <div class="form-label fw-semibold" id="sector-label">Sectors</div>
+                @let sectorErrors = errorMessages('sector_ids');
+
+                <div class="form-label fw-semibold mb-1" id="sector-label">Sectors</div>
+
+                <div class="form-text mt-0 mb-2" id="sector-help">
+                  Only the sectors inside a category can be selected.
+                </div>
 
                 <app-sector-tree-selector
                   [sectors]="sectors()"
                   [selectedIds]="form.controls.sector_ids.value"
-                  [invalid]="showsError(form.controls.sector_ids)"
+                  [invalid]="sectorErrors.length > 0"
                   labelledBy="sector-label"
                   [describedBy]="
-                    showsError(form.controls.sector_ids)
-                      ? 'sector-help sector-error'
-                      : 'sector-help'
+                    sectorErrors.length > 0 ? 'sector-help sector-error' : 'sector-help'
                   "
                   (selectedIdsChange)="onSectorIdsChange($event)"
                 />
 
-                <div class="form-text" id="sector-help">
-                  Expand a category or filter by name or path, then choose one or more sectors.
-                  Categories group the list; only the sectors inside them can be selected.
-                </div>
-
-                @if (form.controls.sector_ids.touched && form.controls.sector_ids.invalid) {
-                  <div class="invalid-feedback d-block" id="sector-error" role="alert">
-                    @if (serverErrors(form.controls.sector_ids); as errors) {
-                      @for (error of errors; track error) {
-                        {{ error }}
-                      }
-                    } @else if (form.controls.sector_ids.hasError('required')) {
-                      Choose at least one sector.
+                @if (sectorErrors.length > 0) {
+                  <div class="invalid-feedback d-block" id="sector-error">
+                    @for (message of sectorErrors; track message) {
+                      {{ message }}
                     }
                   </div>
                 }
               </div>
 
               <div>
-                <div class="form-check">
+                @let termsErrors = errorMessages('agreed_to_terms');
+
+                <div class="form-label fw-semibold mb-1">Terms</div>
+
+                <details class="mb-1">
+                  <summary class="terms-summary">What you are agreeing to</summary>
+
+                  <div class="mt-2 mb-3 text-body-secondary">
+                    <p>
+                      Saving this form stores the name you enter, the sectors you select, and the
+                      fact that you accepted these terms.
+                    </p>
+
+                    <p>
+                      Your submission is tied to your current browser session. For as long as that
+                      session lasts you can return to this form, see what you saved, and change it.
+                      Clearing your cookies or letting the session expire leaves the submission
+                      unreachable.
+                    </p>
+
+                    <p class="mb-0">
+                      This form is a technical demonstration. Please do not enter anything you would
+                      not want stored in a demonstration database.
+                    </p>
+                  </div>
+                </details>
+
+                <div class="form-check terms-check">
                   <input
                     class="form-check-input"
-                    [class.is-invalid]="showsError(form.controls.agreed_to_terms)"
-                    [attr.aria-invalid]="showsError(form.controls.agreed_to_terms)"
+                    [class.is-invalid]="termsErrors.length > 0"
+                    [attr.aria-invalid]="termsErrors.length > 0"
                     #termsCheckbox
                     id="agreed-to-terms"
                     name="agreed_to_terms"
                     type="checkbox"
                     formControlName="agreed_to_terms"
-                    [attr.aria-describedby]="
-                      showsError(form.controls.agreed_to_terms) ? 'terms-error' : null
-                    "
+                    [attr.aria-describedby]="termsErrors.length > 0 ? 'terms-error' : null"
                     required
                   />
 
-                  <label class="form-check-label" for="agreed-to-terms"
-                    >I agree to the terms.</label
-                  >
+                  <label class="form-check-label" for="agreed-to-terms">I agree to the terms</label>
                 </div>
 
-                @if (
-                  form.controls.agreed_to_terms.touched && form.controls.agreed_to_terms.invalid
-                ) {
-                  <div class="invalid-feedback d-block" id="terms-error" role="alert">
-                    @if (serverErrors(form.controls.agreed_to_terms); as errors) {
-                      @for (error of errors; track error) {
-                        {{ error }}
-                      }
-                    } @else if (form.controls.agreed_to_terms.hasError('required')) {
-                      You must agree to the terms.
+                @if (termsErrors.length > 0) {
+                  <div class="invalid-feedback d-block" id="terms-error">
+                    @for (message of termsErrors; track message) {
+                      {{ message }}
                     }
                   </div>
                 }
               </div>
             </fieldset>
 
-            <button class="btn btn-primary" type="submit" [disabled]="saving()">
-              @if (saving()) {
-                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                Saving...
-              } @else {
-                Save
-              }
-            </button>
+            <div class="text-center">
+              <button
+                class="save-button btn btn-primary"
+                #saveButton
+                type="submit"
+                [disabled]="saving()"
+              >
+                @if (saving()) {
+                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                  Saving...
+                } @else if (storedSubmission()) {
+                  Update
+                } @else {
+                  Save
+                }
+              </button>
+            </div>
 
-            <output
-              class="save-status d-block text-center text-success"
-              for="name sector-selector agreed-to-terms"
-            >
+            <div class="save-status text-center text-success" role="status">
               @if (saving()) {
                 Saving submission.
               } @else if (saved()) {
                 Submission saved.
               }
-            </output>
+            </div>
 
             @if (saveError()) {
               <p class="alert alert-danger mb-0" role="alert">

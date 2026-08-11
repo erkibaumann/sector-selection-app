@@ -1,32 +1,38 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
+  afterNextRender,
   Component,
   computed,
   effect,
   ElementRef,
+  inject,
+  Injector,
   input,
   output,
   signal,
   untracked,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 
 import { Sector } from '../../models/sector';
 
 interface SectorTreeNode extends Sector {
+  parent: SectorTreeNode | null;
   children: SectorTreeNode[];
   path: string;
-  parentName: string;
   selectable: boolean;
 }
 
 interface SectorTree {
   roots: SectorTreeNode[];
   orderedNodes: SectorTreeNode[];
-  parentIdById: ReadonlyMap<number, number | null>;
 }
 
 const PATH_SEPARATOR = ' › ';
+
+/** Past this many selections the list collapses behind a "+N more" toggle. */
+const MAX_VISIBLE_PILLS = 4;
 
 @Component({
   selector: 'app-sector-tree-selector',
@@ -45,7 +51,9 @@ export class SectorTreeSelector {
 
   protected readonly pathSeparator = PATH_SEPARATOR;
 
+  private readonly injector = inject(Injector);
   private readonly filterInput = viewChild<ElementRef<HTMLInputElement>>('filterInput');
+  private readonly removeButtons = viewChildren<ElementRef<HTMLButtonElement>>('removeButton');
   private readonly expandedIds = signal<ReadonlySet<number>>(new Set());
   private readonly revealedIds = new Set<number>();
 
@@ -59,6 +67,21 @@ export class SectorTreeSelector {
   protected readonly selectedIdSet = computed(() => new Set(this.selectedIds()));
   protected readonly selectedNodes = computed(() =>
     this.tree().orderedNodes.filter((node) => node.selectable && this.selectedIdSet().has(node.id)),
+  );
+
+  protected readonly showAllSelected = signal(false);
+  protected readonly canCollapseSelected = computed(
+    () => this.selectedNodes().length > MAX_VISIBLE_PILLS,
+  );
+  protected readonly visibleSelectedNodes = computed(() => {
+    const selectedNodes = this.selectedNodes();
+
+    return this.showAllSelected() || !this.canCollapseSelected()
+      ? selectedNodes
+      : selectedNodes.slice(0, MAX_VISIBLE_PILLS);
+  });
+  protected readonly hiddenSelectedCount = computed(
+    () => this.selectedNodes().length - this.visibleSelectedNodes().length,
   );
 
   private readonly categoryIds = computed(() =>
@@ -81,24 +104,19 @@ export class SectorTreeSelector {
       return null;
     }
 
-    const { orderedNodes, parentIdById } = this.tree();
     const visible = new Set<number>();
 
     // A node's path contains its ancestors' names, so descendants of a match
     // match too. Only the ancestors of a match need to be revealed.
-    for (const node of orderedNodes) {
+    for (const node of this.tree().orderedNodes) {
       if (!node.path.toLocaleLowerCase().includes(query)) {
         continue;
       }
 
       visible.add(node.id);
 
-      for (
-        let ancestorId = parentIdById.get(node.id) ?? null;
-        ancestorId !== null;
-        ancestorId = parentIdById.get(ancestorId) ?? null
-      ) {
-        visible.add(ancestorId);
+      for (let ancestor = node.parent; ancestor !== null; ancestor = ancestor.parent) {
+        visible.add(ancestor.id);
       }
     }
 
@@ -112,18 +130,13 @@ export class SectorTreeSelector {
       (node) => node.selectable && node.path.toLocaleLowerCase().includes(query),
     ).length;
   });
-  protected readonly availableCount = computed(
-    () => this.tree().orderedNodes.filter((node) => node.selectable).length,
-  );
-
   constructor() {
     // Reveal the categories leading to whatever is already selected, so a
     // restored submission can be edited without hunting for it.
     effect(() => {
-      const selectedIds = this.selectedIds();
-      const { parentIdById } = this.tree();
+      const selectedNodes = this.selectedNodes();
 
-      untracked(() => this.expandAncestors(selectedIds, parentIdById));
+      untracked(() => this.expandAncestors(selectedNodes));
     });
   }
 
@@ -135,6 +148,10 @@ export class SectorTreeSelector {
     this.filterText.set(value);
   }
 
+  /**
+   * A browser-supplied clear control is not guaranteed for `type="search"`
+   * (Firefox renders none), so the form provides its own.
+   */
   protected clearFilter(): void {
     this.filterText.set('');
 
@@ -144,6 +161,10 @@ export class SectorTreeSelector {
       inputElement.value = '';
       inputElement.focus();
     }
+  }
+
+  protected toggleShowAllSelected(): void {
+    this.showAllSelected.update((showAll) => !showAll);
   }
 
   protected toggleExpanded(id: number): void {
@@ -186,14 +207,34 @@ export class SectorTreeSelector {
   }
 
   protected removeSelection(id: number): void {
+    const removedIndex = this.visibleSelectedNodes().findIndex((node) => node.id === id);
     const selectedIds = new Set(this.selectedIds());
 
     selectedIds.delete(id);
     this.emitInTreeOrder(selectedIds);
+
+    // The button that had focus is gone; land on the pill that took its place.
+    this.afterRender(() => {
+      const removeButtons = this.removeButtons();
+
+      if (removeButtons.length === 0) {
+        this.focus();
+
+        return;
+      }
+
+      removeButtons[Math.min(removedIndex, removeButtons.length - 1)]?.nativeElement.focus();
+    });
   }
 
   protected clearSelection(): void {
+    this.showAllSelected.set(false);
     this.emitInTreeOrder(new Set());
+    this.afterRender(() => this.focus());
+  }
+
+  private afterRender(callback: () => void): void {
+    afterNextRender(callback, { injector: this.injector });
   }
 
   protected toggleExpandAll(): void {
@@ -212,26 +253,19 @@ export class SectorTreeSelector {
    * Reveals each selection once. Re-expanding on every change would fight a
    * user who deliberately collapsed a category holding a selected sector.
    */
-  private expandAncestors(
-    selectedIds: readonly number[],
-    parentIdById: ReadonlyMap<number, number | null>,
-  ): void {
+  private expandAncestors(selectedNodes: readonly SectorTreeNode[]): void {
     const expandedIds = new Set(this.expandedIds());
     const initialSize = expandedIds.size;
 
-    for (const selectedId of selectedIds) {
-      if (this.revealedIds.has(selectedId)) {
+    for (const node of selectedNodes) {
+      if (this.revealedIds.has(node.id)) {
         continue;
       }
 
-      this.revealedIds.add(selectedId);
+      this.revealedIds.add(node.id);
 
-      for (
-        let ancestorId = parentIdById.get(selectedId) ?? null;
-        ancestorId !== null;
-        ancestorId = parentIdById.get(ancestorId) ?? null
-      ) {
-        expandedIds.add(ancestorId);
+      for (let ancestor = node.parent; ancestor !== null; ancestor = ancestor.parent) {
+        expandedIds.add(ancestor.id);
       }
     }
 
@@ -254,23 +288,23 @@ export class SectorTreeSelector {
     for (const sector of sectors) {
       nodesById.set(sector.id, {
         ...sector,
+        parent: null,
         children: [],
         path: '',
-        parentName: '',
         selectable: false,
       });
     }
 
     const roots: SectorTreeNode[] = [];
-    const parentIdById = new Map<number, number | null>();
 
     for (const node of nodesById.values()) {
-      parentIdById.set(node.id, node.parent_id);
+      const parent = node.parent_id === null ? null : (nodesById.get(node.parent_id) ?? null);
 
-      if (node.parent_id === null) {
+      if (parent === null) {
         roots.push(node);
       } else {
-        nodesById.get(node.parent_id)?.children.push(node);
+        node.parent = parent;
+        parent.children.push(node);
       }
     }
 
@@ -278,24 +312,19 @@ export class SectorTreeSelector {
       left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
     const orderedNodes: SectorTreeNode[] = [];
 
-    const orderSubtree = (
-      nodes: SectorTreeNode[],
-      parentPath: string,
-      parentName: string,
-    ): void => {
+    const orderSubtree = (nodes: SectorTreeNode[], parentPath: string): void => {
       nodes.sort(compareByName);
 
       for (const node of nodes) {
         node.path = parentPath === '' ? node.name : `${parentPath}${PATH_SEPARATOR}${node.name}`;
-        node.parentName = parentName;
         node.selectable = node.children.length === 0;
         orderedNodes.push(node);
-        orderSubtree(node.children, node.path, node.name);
+        orderSubtree(node.children, node.path);
       }
     };
 
-    orderSubtree(roots, '', '');
+    orderSubtree(roots, '');
 
-    return { roots, orderedNodes, parentIdById };
+    return { roots, orderedNodes };
   }
 }

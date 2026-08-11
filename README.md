@@ -4,32 +4,18 @@ A small full-stack application for selecting one or more business sectors and sa
 
 ## Assignment materials
 
-The original task materials and the one-off extraction script used while preparing the sector seed data are retained for reference:
-
-- [Assignment specification](reference/assignment.md)
-- [Original legacy form](<reference/index%20(1).html>)
-- [Sector extraction script](reference/extract_sectors.py)
-
-The extraction script documents how the supplied sector options were converted into structured data. It is not used by the application at runtime.
+The original specification, the supplied legacy form, and the one-off script used to extract the sector data are kept in [`reference/`](reference/). None of it runs at runtime.
 
 ## Database dump
 
-The assignment asks for a full database dump with both structure and data. It lives at [`backend/database/dump.sql`](backend/database/dump.sql) and is a plain `sqlite3 .dump`, so it can be read as a schema reference or loaded directly:
+The assignment asks for a full dump of structure and data. [`backend/database/dump.sql`](backend/database/dump.sql) is a plain `sqlite3 .dump` holding the schema and all 79 sectors:
 
 ```bash
 cd backend
 sqlite3 database/database.sqlite < database/dump.sql
 ```
 
-The dump contains the complete schema and all 79 supplied sectors. It deliberately contains **no** `sessions` or `submissions` rows: those are per-visitor runtime data rather than reference data, and session IDs are the credential that identifies a visitor, so shipping them in a file meant to document the schema would be wrong on both counts. Loading the dump gives the same starting state as `php artisan migrate:fresh --seed`.
-
-To regenerate it after a schema change:
-
-```bash
-cd backend
-php artisan migrate:fresh --seed
-sqlite3 database/database.sqlite .dump > database/dump.sql
-```
+It deliberately contains no `sessions` or `submissions` rows — those are per-visitor runtime data, and session IDs are the credential that identifies a visitor. Loading it gives the same starting state as `php artisan migrate:fresh --seed`. Regenerate it after a schema change with `sqlite3 database/database.sqlite .dump > database/dump.sql`.
 
 ## Technology stack
 
@@ -49,35 +35,15 @@ sqlite3 database/database.sqlite .dump > database/dump.sql
 
 ## Local setup
 
-### 1. Start the backend
-
-From the repository root:
+Two terminals. Backend:
 
 ```bash
 cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
-php artisan migrate --seed
-php artisan serve
+composer setup   # installs, creates .env and the SQLite file, migrates, seeds
+composer dev     # serves on http://127.0.0.1:8000
 ```
 
-Laravel will run at `http://127.0.0.1:8000` by default. Keep this terminal running.
-
-The seed command loads all 79 supplied sectors. To rebuild the local database later, run:
-
-```bash
-php artisan migrate:fresh --seed
-```
-
-This command deletes existing local submissions before recreating the tables.
-
-### 2. Start the frontend
-
-Open another terminal at the repository root:
-
-If you use nvm, run `nvm use` to select the repository's pinned Node.js version. Then start Angular:
+Frontend:
 
 ```bash
 cd frontend
@@ -85,11 +51,17 @@ npm ci
 npm start
 ```
 
-Open `http://localhost:4200` in a browser.
+Open `http://localhost:4200`.
 
-The Angular development server proxies `/api` requests to Laravel. This keeps requests same-origin in the browser and allows Laravel's session and CSRF cookies to work without hardcoded backend URLs in the Angular application.
+To rebuild the local database later, `php artisan migrate:fresh --seed` — this deletes existing submissions.
 
-The application is intentionally designed for same-origin deployment; cross-origin API access is not part of its supported deployment model.
+### Why the dev server proxies `/api`
+
+Angular serves on `localhost:4200` and Laravel on `127.0.0.1:8000`. A browser treats those as two different **origins** (scheme + host + port), and it restricts what one origin may do to another: cross-origin requests need CORS headers, and cookies need extra opt-ins on both ends to travel at all.
+
+That matters here because Laravel's session cookie is the only thing identifying a visitor, and its `XSRF-TOKEN` cookie is what authorises a save. If the browser withholds them, nothing works.
+
+`frontend/proxy.conf.json` makes the Angular dev server forward `/api` to Laravel, so the browser only ever talks to `localhost:4200` and both cookies are sent automatically. It also means Angular requests relative paths like `/api/sectors` with no backend host anywhere in the code — nothing to configure per environment, and no risk of shipping a development URL to production, where the web server routes `/api` the same way.
 
 ## Using the application
 
@@ -102,22 +74,14 @@ The first save creates a submission for the current Laravel session. Further sav
 
 ## Running checks
 
-Run the frontend tests and production build:
-
 ```bash
 cd frontend
 npm test -- --watch=false
-npm run build
-```
+npm run build          # output in frontend/dist/frontend/browser
 
-Run the backend test suite:
-
-```bash
-cd backend
+cd ../backend
 php artisan test --compact
 ```
-
-The Angular production files are written to `frontend/dist/frontend/browser`.
 
 ## API
 
@@ -141,51 +105,30 @@ Laravel requires a name of at most 255 characters, at least one distinct existin
 
 ## Design decisions
 
-### Sector hierarchy
+### Sectors
 
-Sectors use a self-referencing `parent_id` instead of storing indentation in their names. The original sector IDs are retained as primary keys. Angular constructs a nested hierarchy and full breadcrumb paths from the parent relationships, keeping presentation details out of the database.
+- **Hierarchy via a self-referencing `parent_id`,** not indentation baked into names. The supplied option IDs stay as primary keys, and Angular derives the nesting and breadcrumb paths, so no presentation detail lives in the database.
+- **Siblings sort alphabetically at each level.** This reproduces the supplied ordering exactly, so no `sort_order` column is needed.
+- **Only leaf sectors are selectable.** Sectors with children are navigation-only headings. Selections stay independent — no cascade, no tri-state. Laravel enforces the same rule, and the form drops any stored category ID when refilling.
+- **Native controls rather than a UI library.** The selector is checkboxes, buttons, nested lists, and a scroll area. A native `<select multiple>` needs undiscoverable Ctrl-click and behaves poorly on mobile; a third-party tree would add a second design system and an emulated ARIA tree in place of controls browsers already handle correctly.
 
-Sibling sectors are sorted alphabetically at each level. This reproduces the supplied ordering without adding a separate sort column.
+### Backend
 
-Every sector with children is a category heading used only for navigation. Only leaf sectors are selectable, and each selection remains independent, with no propagation or tri-state behavior. Laravel enforces the same leaf-only rule when saving. If an older stored submission contains a category ID, the form ignores that ID during refill and omits it on the next save.
+- **Session identity, no authentication.** "The user's own data during the session" is the session cookie. `updateOrCreate` keyed on the session ID keeps at most one submission per session, so a single `POST /api/submission` covers both create and edit.
+- **Many-to-many through `sector_submission`.** Keeps the data normalised and lets a submission hold any number of sectors.
+- **API routes prepend the `web` middleware group** — `$middleware->api(prepend: 'web')`. Sanctum's `statefulApi()` was used first, but it applies session middleware *conditionally*, only when `Origin` or `Referer` matches a configured domain; any other caller reached `$request->session()` with no session and got a `500` instead of a `419`. Prepending makes the dependency unconditional and declared. Sanctum then had no role left — no tokens, no guards, no auth — so it was removed.
+- **Trimmed framework defaults.** With no auth, the `users` and `password_reset_tokens` tables, the `User` model, and `config/auth.php` are gone, and the framework migration was reduced to the `sessions` table alone. The cache and queue migrations were dropped in favour of the file cache and synchronous queue.
 
-The selector uses native checkboxes, buttons, nested lists, and a fixed-height responsive scroll area rather than a native multi-select or a third-party UI dependency. Categories start collapsed, while categories leading to a restored selection open automatically. Filtering is case-insensitive across each sector's full breadcrumb path, preserves the ancestors needed for context, shows a complete subtree when its category matches, and temporarily expands matching branches without changing the user's normal expansion state. Selected sectors appear above the filter as removable pills in tree order, using the immediate parent for visible context and the full path in each Remove button's accessible label. A Clear all action removes every selection at once.
+### Frontend
 
-### Submission storage
+- **Reactive forms and signals.** The parent owns the `FormControl`, server errors, and save lifecycle; the standalone tree selector takes sectors and selected IDs as inputs and emits ordered ID arrays. A typed API service keeps HTTP out of the components.
+- **Bootstrap as CSS only.** Responsive layout, form, and validation styling without pulling in JavaScript components or a second design system.
+- **Accessibility is built on native semantics.** Labels are associated, hints and errors are wired through `aria-describedby`, focus moves to the first invalid control on a failed submit and back to the save button once a save settles, and result counts are announced politely. The selector uses semantic nested lists rather than an emulated ARIA tree.
 
-Submissions and sectors have a many-to-many relationship through the `sector_submission` pivot table. This keeps the data normalized and allows each submission to contain multiple sectors.
+### Scope
 
-No user accounts or authentication flow are needed for this assignment. Laravel's session ID identifies the submission, and `updateOrCreate` ensures there is at most one submission per session. The same `POST` endpoint therefore handles both initial saves and later edits.
-
-Because there is no authentication, Laravel's default `users` and `password_reset_tokens` tables were removed along with the `User` model, its factory, and `config/auth.php`. The framework's default migration creates `sessions` in the same file, so that migration was reduced to the session table alone rather than deleted. Its `user_id` column is kept because Laravel's database session handler writes that column whenever an authentication guard is bound, which it always is. The unused cache and queue migrations were also removed: this small application uses the file cache and synchronous queue defaults, so it does not need database tables or a queue worker.
-
-### Session identity and CSRF
-
-Because the session cookie is the only thing identifying a visitor, every API route must run Laravel's session middleware. The API routes therefore prepend the `web` middleware group in `bootstrap/app.php`:
-
-```php
-$middleware->api(prepend: 'web');
-```
-
-This project initially used Laravel Sanctum's `statefulApi()` helper instead. That helper applies the session and CSRF middleware **conditionally** — only when a request's `Origin` or `Referer` header matches a configured stateful domain. Any other caller reached the controller with no session at all, and `$request->session()` then threw `Session store not set on request`, turning a well-formed request into a `500`. That failure was invisible in development, where the Angular proxy always sends a matching `Origin`, and it would have surfaced in production as a total outage the first time the deployment hostname was missing from the stateful-domain list.
-
-Prepending the group makes the dependency unconditional and declared rather than inferred from request headers. A request without a CSRF token now receives a `419`, which is the correct answer, instead of a `500`.
-
-With that in place Sanctum had no remaining role — this application has no tokens, no guards, and no authentication — so the package was removed. The initial API requests for the sectors and current submission establish the session and `XSRF-TOKEN` cookies. Angular's built-in XSRF interceptor sends that token back as an `X-XSRF-TOKEN` header on the save request, which is exactly what Laravel validates. No separate CSRF initialization request is needed.
-
-### Production hardening scope
-
-Laravel's API rate limiter uses Laravel's file cache and allows 60 requests per minute per IP address. A production deployment should tune that limit to its traffic and operational requirements. A scheduled session-pruning job remains out of scope for this local technical assignment. Laravel's standard session expiry remains enabled here: database sessions expire after 120 idle minutes and expired rows are swept opportunistically by the framework's session-cleanup lottery.
-
-### Frontend structure
-
-The Angular form uses reactive controls so validation and form state are explicit. The standalone tree selector receives sectors and selected IDs explicitly and emits ordered ID arrays; the parent continues to own the `FormControl`, server errors, and save lifecycle. Signals represent loading, saving, success, error, expansion, and filter states, while a typed API service keeps HTTP code separate from the form components.
-
-Bootstrap is included as CSS only. It provides consistent responsive layout, form, validation, and feedback styling without adding JavaScript components or another application-level abstraction.
-
-### Accessibility
-
-Form controls have associated labels, help and error text is connected with `aria-describedby`, invalid controls receive visible feedback, and save results use an `output` element. The selector deliberately uses semantic nested lists instead of emulating an ARIA tree: native buttons expose `aria-expanded` and `aria-controls`, native checkbox labels expose selection, and the filter receives focus when sector validation fails. Result counts are announced politely, long labels wrap, and controls remain keyboard-operable at mobile widths.
+- **Same-origin deployment.** Session and CSRF cookies are the entire identity mechanism, so both applications are expected under one public origin, with the web server routing `/api/*` to Laravel. Cross-origin access is not a supported deployment model.
+- **Production hardening is deliberately partial.** Rate limiting is enabled (60 requests per minute per IP, via the file cache) and sessions expire after 120 idle minutes with Laravel's cleanup lottery. Tuning those limits and scheduling session pruning are deployment concerns rather than parts of this assignment.
 
 ## Project structure
 
@@ -196,9 +139,3 @@ sector-selection-app/
 ├── reference/   Original assignment, legacy form, and extraction script
 └── README.md
 ```
-
-## Deployment notes
-
-Build Angular with `npm run build` and serve the generated files as static assets. Serve Laravel from its `backend/public` directory, and configure the web server so `/api/*` reaches Laravel while frontend routes reach Angular.
-
-Keeping both applications under one public origin is the simplest deployment arrangement because the application relies on Laravel's session and CSRF cookies. Production environment values, HTTPS, and the chosen database should be configured on the deployment platform; Laravel's development server is not intended for production use.

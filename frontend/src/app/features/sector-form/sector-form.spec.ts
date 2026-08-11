@@ -142,7 +142,7 @@ describe('SectorForm', () => {
 
     expect(element.textContent).toContain('Your name is required.');
     expect(element.textContent).toContain('Choose at least one sector.');
-    expect(element.textContent).toContain('You must agree to the terms.');
+    expect(element.textContent).toContain('Please agree to the terms to continue.');
   });
 
   const selectSector = (element: HTMLElement): void => {
@@ -215,8 +215,47 @@ describe('SectorForm', () => {
   it('rejects a name longer than 255 characters', () => {
     const element = submitWithName('A'.repeat(256));
 
+    // maxlength stops typing and pasting; the validator mirrors the backend
+    // rule for any value that reaches the control by another route.
+    expect(element.querySelector('#name')?.getAttribute('maxlength')).toBe('255');
     expect(submittedSubmission).toBeUndefined();
     expect(element.textContent).toContain('Name must not exceed 255 characters.');
+  });
+
+  it('announces a failed submit once, above the fields', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('[role="alert"]')).toBeNull();
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    const summary = element.querySelector('form [role="alert"]');
+
+    expect(summary?.textContent).toContain('Please correct the highlighted fields.');
+    // One assertive region, not one per field.
+    expect(element.querySelectorAll('form [role="alert"]').length).toBe(1);
+  });
+
+  it('drops the summary once the fields are corrected', () => {
+    submitWithName('Ada Lovelace');
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(submittedSubmission).toBeDefined();
+    expect(element.querySelector('form [role="alert"]')).toBeNull();
+  });
+
+  it('says Update once a submission exists, without needing a reload', async () => {
+    const element = submitWithName('Ada Lovelace');
+
+    await fixture.whenStable();
+
+    expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Update');
   });
 
   it('focuses the name field when the whole form is empty', () => {
@@ -331,9 +370,11 @@ describe('SectorForm', () => {
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBe(
       'terms-error',
     );
-    expect(element.querySelector('#name-error')?.getAttribute('role')).toBe('alert');
-    expect(element.querySelector('#sector-error')?.getAttribute('role')).toBe('alert');
-    expect(element.querySelector('#terms-error')?.getAttribute('role')).toBe('alert');
+    // Not assertive live regions: focus moves to the first invalid control and
+    // aria-describedby carries the message, so three alerts would only compete.
+    expect(element.querySelector('#name-error')?.getAttribute('role')).toBeNull();
+    expect(element.querySelector('#sector-error')?.getAttribute('role')).toBeNull();
+    expect(element.querySelector('#terms-error')?.getAttribute('role')).toBeNull();
     expectReferencesToResolve();
   });
 
@@ -533,6 +574,39 @@ describe('SectorForm', () => {
     );
     // The checkbox is reachable without expanding anything by hand.
     expect(element.querySelector<HTMLInputElement>('#sector-checkbox-19')?.checked).toBe(true);
+  });
+
+  it('tells a returning user they are editing an existing submission', () => {
+    existingSubmission = {
+      name: 'Grace Hopper',
+      sector_ids: [19],
+      agreed_to_terms: true,
+    };
+
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.textContent).toContain('You saved this form earlier in this session.');
+    expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Update');
+  });
+
+  it('says Save, not Update, when there is nothing stored yet', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.textContent).not.toContain('You saved this form earlier');
+    expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Save');
+  });
+
+  it('returns focus to the save button once a save settles', async () => {
+    const element = submitWithName('Ada Lovelace');
+
+    await fixture.whenStable();
+
+    expect(submittedSubmission).toBeDefined();
+    expect(document.activeElement).toBe(element.querySelector('.save-button'));
   });
 
   it('drops stale category ids while refilling so the next save removes them', () => {

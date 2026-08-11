@@ -9,9 +9,13 @@
 >
   <div class="selected-sectors mb-3">
     <div class="selected-sectors-header">
-      <p class="form-label small fw-semibold mb-0" id="selected-sectors-label" aria-live="polite">
-        {{ selectedNodes().length }}
-        {{ selectedNodes().length === 1 ? 'sector' : 'sectors' }} selected
+      <p class="small text-body-secondary mb-0" id="selected-sectors-label" aria-live="polite">
+        @if (selectedNodes().length === 0) {
+          Nothing selected yet.
+        } @else {
+          {{ selectedNodes().length }}
+          {{ selectedNodes().length === 1 ? 'sector' : 'sectors' }} selected
+        }
       </p>
 
       @if (selectedNodes().length > 0) {
@@ -21,39 +25,60 @@
       }
     </div>
 
-    @if (selectedNodes().length === 0) {
-      <p class="selected-sectors-empty form-text mb-0">
-        Nothing selected yet. Pick one or more sectors below.
-      </p>
-    } @else {
-      <ul class="selected-sector-pills list-unstyled mb-0" aria-labelledby="selected-sectors-label">
-        @for (node of selectedNodes(); track node.id) {
-          <li class="selected-sector-pill">
-            <span class="selected-sector-text">
-              @if (node.parentName !== '') {
-                <span class="selected-sector-parent">{{ node.parentName }}{{ pathSeparator }}</span>
-              }
-              <span class="selected-sector-name">{{ node.name }}</span>
-            </span>
+    <div class="selected-sectors-body">
+      @if (selectedNodes().length > 0) {
+        <ul
+          class="selected-sector-pills list-unstyled mb-0"
+          aria-labelledby="selected-sectors-label"
+        >
+          @for (node of visibleSelectedNodes(); track node.id) {
+            <li class="selected-sector-pill">
+              <span class="selected-sector-text">
+                @if (node.parent !== null) {
+                  <span class="selected-sector-parent"
+                    >{{ node.parent.name }}{{ pathSeparator }}</span
+                  >
+                }
+                <span class="selected-sector-name">{{ node.name }}</span>
+              </span>
 
-            <button
-              class="selected-sector-remove"
-              type="button"
-              [attr.aria-label]="'Remove ' + node.path"
-              (click)="removeSelection(node.id)"
-            >
-              <span aria-hidden="true">&#10005;</span>
-            </button>
-          </li>
-        }
-      </ul>
-    }
+              <button
+                class="selected-sector-remove"
+                #removeButton
+                type="button"
+                [attr.aria-label]="'Remove ' + node.path"
+                (click)="removeSelection(node.id)"
+              >
+                <span aria-hidden="true">&#10005;</span>
+              </button>
+            </li>
+          }
+
+          @if (canCollapseSelected()) {
+            <li>
+              <button
+                class="selected-sector-toggle btn btn-sm btn-link"
+                type="button"
+                [attr.aria-expanded]="showAllSelected()"
+                (click)="toggleShowAllSelected()"
+              >
+                @if (showAllSelected()) {
+                  Show fewer
+                } @else {
+                  +{{ hiddenSelectedCount() }} more
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
   </div>
 
   <div class="sector-filter mb-2">
-    <label class="form-label small fw-semibold" for="sector-filter">Filter sectors</label>
+    <label class="form-label small mb-1" for="sector-filter">Filter sectors</label>
 
-    <div class="input-group">
+    <div class="sector-filter-input input-group">
       <input
         class="form-control"
         #filterInput
@@ -62,7 +87,7 @@
         autocomplete="off"
         aria-controls="sector-tree-list"
         aria-describedby="sector-filter-results"
-        placeholder="Search names or paths"
+        placeholder="e.g. Printing, or Manufacturing › Wood"
         (input)="setFilter(filterInput.value)"
       />
 
@@ -78,7 +103,7 @@
         @if (isFiltering()) {
           {{ resultCount() }} {{ resultCount() === 1 ? 'sector' : 'sectors' }} found.
         } @else {
-          {{ availableCount() }} sectors available.
+          {{ resultCount() }} sectors available.
         }
       </p>
 
@@ -124,7 +149,7 @@
 <ng-template #treeNode let-node>
   <li>
     @if (node.selectable) {
-      <div class="sector-node sector-leaf">
+      <div class="sector-node">
         <input
           class="form-check-input sector-checkbox"
           type="checkbox"
