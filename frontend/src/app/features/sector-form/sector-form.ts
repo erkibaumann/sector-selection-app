@@ -152,10 +152,6 @@ export class SectorForm implements OnInit {
       childrenByParentId.set(sector.parent_id, siblings);
     }
 
-    for (const siblings of childrenByParentId.values()) {
-      siblings.sort((left, right) => left.name.localeCompare(right.name));
-    }
-
     const options: SectorOption[] = [];
 
     const appendChildren = (parentId: number | null, depth: number): void => {

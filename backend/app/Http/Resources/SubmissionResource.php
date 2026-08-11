@@ -17,7 +17,7 @@ class SubmissionResource extends JsonResource
         return [
             'name' => $this->name,
             'sector_ids' => $this->sectors->modelKeys(),
-            'agreed_to_terms' => (bool) $this->agreed_to_terms,
+            'agreed_to_terms' => $this->agreed_to_terms,
         ];
     }
 }

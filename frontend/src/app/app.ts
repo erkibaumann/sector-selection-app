@@ -5,6 +5,5 @@ import { SectorForm } from './features/sector-form/sector-form';
   selector: 'app-root',
   imports: [SectorForm],
   templateUrl: './app.html',
-  styleUrl: './app.css',
 })
 export class App {}
