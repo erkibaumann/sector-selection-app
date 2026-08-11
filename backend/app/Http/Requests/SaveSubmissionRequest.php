@@ -22,7 +22,7 @@ class SaveSubmissionRequest extends FormRequest
             'sector_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists(Sector::class, 'id'),
+                Rule::exists(Sector::class, 'id')->whereNotNull('parent_id'),
             ],
             'agreed_to_terms' => ['required', 'accepted'],
         ];

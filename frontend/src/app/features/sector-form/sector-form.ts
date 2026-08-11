@@ -3,6 +3,7 @@ import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angul
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
 import { Sector } from '../../models/sector';
 import { Submission } from '../../models/submission';
+import { SectorTreeSelector } from '../sector-tree-selector/sector-tree-selector';
 import {
   AbstractControl,
   FormControl,
@@ -13,15 +14,9 @@ import {
 } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
-interface SectorOption extends Sector {
-  depth: number;
-}
-
 interface ValidationErrorResponse {
   errors?: Record<string, unknown>;
 }
-
-const INDENT_PER_LEVEL = 4;
 
 function nonBlankName(control: AbstractControl): ValidationErrors | null {
   return String(control.value ?? '').trim() === '' ? { required: true } : null;
@@ -33,7 +28,7 @@ function isSubmissionField(field: string): field is keyof Submission {
 
 @Component({
   selector: 'app-sector-form',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, SectorTreeSelector],
   templateUrl: './sector-form.html',
   styleUrl: './sector-form.css',
 })
@@ -41,10 +36,10 @@ export class SectorForm implements OnInit {
   private readonly sectorSelectionApi = inject(SectorSelectionApi);
 
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
-  private readonly sectorSelect = viewChild<ElementRef<HTMLSelectElement>>('sectorSelect');
+  private readonly sectorSelector = viewChild(SectorTreeSelector);
   private readonly termsCheckbox = viewChild<ElementRef<HTMLInputElement>>('termsCheckbox');
 
-  protected readonly sectors = signal<SectorOption[]>([]);
+  protected readonly sectors = signal<Sector[]>([]);
   protected readonly loading = signal(true);
   protected readonly loadError = signal(false);
   protected readonly saving = signal(false);
@@ -83,10 +78,13 @@ export class SectorForm implements OnInit {
       submission: this.sectorSelectionApi.getSubmission(),
     }).subscribe({
       next: ({ sectors, submission }) => {
-        this.sectors.set(this.buildSectorOptions(sectors));
+        this.sectors.set(sectors);
 
         if (submission !== null) {
-          this.form.reset(submission);
+          this.form.reset({
+            ...submission,
+            sector_ids: this.selectableSectorIds(submission.sector_ids, sectors),
+          });
         }
 
         this.loading.set(false);
@@ -136,8 +134,11 @@ export class SectorForm implements OnInit {
     });
   }
 
-  protected sectorIndentation(depth: number): string {
-    return '\u00A0'.repeat(depth * INDENT_PER_LEVEL);
+  protected onSectorIdsChange(selectedIds: number[]): void {
+    const sectorControl = this.form.controls.sector_ids;
+
+    sectorControl.setValue(selectedIds);
+    sectorControl.markAsTouched();
   }
 
   protected showsError(control: AbstractControl): boolean {
@@ -192,39 +193,20 @@ export class SectorForm implements OnInit {
     if (controls.name.invalid) {
       this.nameInput()?.nativeElement.focus();
     } else if (controls.sector_ids.invalid) {
-      this.sectorSelect()?.nativeElement.focus();
+      this.sectorSelector()?.focus();
     } else if (controls.agreed_to_terms.invalid) {
       this.termsCheckbox()?.nativeElement.focus();
     }
   }
 
-  private buildSectorOptions(sectors: Sector[]): SectorOption[] {
-    const childrenByParentId = new Map<number | null, Sector[]>();
+  private selectableSectorIds(
+    selectedIds: readonly number[],
+    sectors: readonly Sector[],
+  ): number[] {
+    const selectableIds = new Set(
+      sectors.filter((sector) => sector.parent_id !== null).map((sector) => sector.id),
+    );
 
-    for (const sector of sectors) {
-      const siblings = childrenByParentId.get(sector.parent_id) ?? [];
-
-      siblings.push(sector);
-      childrenByParentId.set(sector.parent_id, siblings);
-    }
-
-    const options: SectorOption[] = [];
-
-    const appendChildren = (parentId: number | null, depth: number): void => {
-      const children = childrenByParentId.get(parentId) ?? [];
-
-      for (const sector of children) {
-        options.push({
-          ...sector,
-          depth,
-        });
-
-        appendChildren(sector.id, depth + 1);
-      }
-    };
-
-    appendChildren(null, 0);
-
-    return options;
+    return [...new Set(selectedIds)].filter((id) => selectableIds.has(id));
   }
 }

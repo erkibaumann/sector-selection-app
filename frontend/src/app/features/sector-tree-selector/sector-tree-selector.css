@@ -1,0 +1,95 @@
+:host {
+  display: block;
+}
+
+.sector-tree-scroll {
+  height: clamp(17rem, 45vh, 24rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.sector-selector-invalid .sector-tree-scroll {
+  border-color: var(--bs-form-invalid-border-color) !important;
+}
+
+.sector-tree-list {
+  list-style: none;
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.sector-tree-root {
+  padding: 0.35rem 0.5rem;
+}
+
+.sector-node {
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.sector-toggle,
+.sector-toggle-placeholder {
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.sector-toggle {
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.sector-checkbox {
+  flex: 0 0 auto;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.775rem;
+}
+
+.sector-node-name {
+  min-width: 0;
+  min-height: 2.75rem;
+  padding-block: 0.625rem;
+  overflow-wrap: anywhere;
+}
+
+label.sector-node-name {
+  cursor: pointer;
+}
+
+.selected-sectors summary {
+  min-height: 2.75rem;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+}
+
+.selected-sector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.selected-sector-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+  .sector-tree-list {
+    padding-inline-start: 0.75rem;
+  }
+
+  .sector-tree-root {
+    padding-inline-start: 0.25rem;
+  }
+
+  .selected-sector {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

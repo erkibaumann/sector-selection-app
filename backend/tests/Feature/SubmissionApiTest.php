@@ -74,6 +74,26 @@ it('rejects sector ids that do not exist', function () {
     ])->assertJsonValidationErrors('sector_ids.0');
 });
 
+it('rejects top-level sector ids', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'John Doe',
+        'sector_ids' => [1],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors('sector_ids.0');
+});
+
+it('accepts selectable sectors whether or not they have children', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'John Doe',
+        'sector_ids' => [6, 342],
+        'agreed_to_terms' => true,
+    ])->assertCreated();
+});
+
 it('uses human-readable field names in validation messages', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 

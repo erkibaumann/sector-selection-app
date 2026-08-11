@@ -57,35 +57,24 @@
               </div>
 
               <div>
-                <label class="form-label fw-semibold" for="sector-ids">Sectors</label>
+                <div class="form-label fw-semibold" id="sector-label">Sectors</div>
 
-                <select
-                  class="form-select"
-                  [class.is-invalid]="showsError(form.controls.sector_ids)"
-                  [attr.aria-invalid]="showsError(form.controls.sector_ids)"
-                  #sectorSelect
-                  id="sector-ids"
-                  name="sector_ids"
-                  multiple
-                  size="14"
-                  formControlName="sector_ids"
-                  [attr.aria-describedby]="
+                <app-sector-tree-selector
+                  [sectors]="sectors()"
+                  [selectedIds]="form.controls.sector_ids.value"
+                  [invalid]="showsError(form.controls.sector_ids)"
+                  labelledBy="sector-label"
+                  [describedBy]="
                     showsError(form.controls.sector_ids)
                       ? 'sector-help sector-error'
                       : 'sector-help'
                   "
-                  required
-                >
-                  @for (sector of sectors(); track sector.id) {
-                    <option [ngValue]="sector.id">
-                      {{ sectorIndentation(sector.depth) }}{{ sector.name }}
-                    </option>
-                  }
-                </select>
+                  (selectedIdsChange)="onSectorIdsChange($event)"
+                />
 
                 <div class="form-text" id="sector-help">
-                  Choose one or more. Hold Command on macOS or Control on Windows to select multiple
-                  entries.
+                  Expand a category or filter by name or path, then choose one or more sectors.
+                  Top-level categories are for navigation only.
                 </div>
 
                 @if (form.controls.sector_ids.touched && form.controls.sector_ids.invalid) {
@@ -150,7 +139,7 @@
 
             <output
               class="save-status d-block text-center text-success"
-              for="name sector-ids agreed-to-terms"
+              for="name sector-selector agreed-to-terms"
             >
               @if (saving()) {
                 Saving submission.

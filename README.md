@@ -7,7 +7,7 @@ A small full-stack application for selecting one or more business sectors and sa
 The original task materials and the one-off extraction script used while preparing the sector seed data are retained for reference:
 
 - [Assignment specification](reference/assignment.md)
-- [Original legacy form](reference/index%20(1).html)
+- [Original legacy form](<reference/index%20(1).html>)
 - [Sector extraction script](reference/extract_sectors.py)
 
 The extraction script documents how the supplied sector options were converted into structured data. It is not used by the application at runtime.
@@ -94,7 +94,7 @@ The application is intentionally designed for same-origin deployment; cross-orig
 ## Using the application
 
 1. Enter a name.
-2. Select one or more sectors. Hold Command on macOS or Control on Windows to select multiple entries.
+2. Expand the sector categories or filter by a name or full category path, then check one or more sectors. Top-level categories are navigation-only.
 3. Agree to the terms.
 4. Select **Save**.
 
@@ -121,35 +121,35 @@ The Angular production files are written to `frontend/dist/frontend/browser`.
 
 ## API
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/sectors` | Return the sectors and their parent relationships |
-| `GET` | `/api/submission` | Return the current session's submission, or `204 No Content` |
-| `POST` | `/api/submission` | Create or update the current session's submission |
+| Method | Endpoint          | Purpose                                                      |
+| ------ | ----------------- | ------------------------------------------------------------ |
+| `GET`  | `/api/sectors`    | Return the sectors and their parent relationships            |
+| `GET`  | `/api/submission` | Return the current session's submission, or `204 No Content` |
+| `POST` | `/api/submission` | Create or update the current session's submission            |
 
 The submission request body has this shape:
 
 ```json
 {
   "name": "Ada Lovelace",
-  "sector_ids": [1, 19],
+  "sector_ids": [6, 19],
   "agreed_to_terms": true
 }
 ```
 
-Laravel requires a name of at most 255 characters, at least one distinct existing sector ID, and acceptance of the terms. Invalid requests receive a `422 Unprocessable Content` response with validation errors.
+Laravel requires a name of at most 255 characters, at least one distinct existing non-root sector ID, and acceptance of the terms. Invalid requests receive a `422 Unprocessable Content` response with validation errors.
 
 ## Design decisions
 
 ### Sector hierarchy
 
-Sectors use a self-referencing `parent_id` instead of storing indentation in their names. The original sector IDs are retained as primary keys. Angular constructs the hierarchy from the parent relationships and renders the indentation, keeping presentation details out of the database.
+Sectors use a self-referencing `parent_id` instead of storing indentation in their names. The original sector IDs are retained as primary keys. Angular constructs a nested hierarchy and full breadcrumb paths from the parent relationships, keeping presentation details out of the database.
 
 Sibling sectors are sorted alphabetically at each level. This reproduces the supplied ordering without adding a separate sort column.
 
-The rendered `<option>` labels still use non-breaking spaces for indentation, as the original file did. That is a deliberate limit rather than a leftover: browsers do not reliably apply `padding` or `text-indent` inside an `<option>`, so non-breaking spaces are the only indentation that renders consistently. The difference from the original is where the indentation comes from — Angular derives it from each sector's depth at render time, instead of it being stored in the sector names.
+Top-level sectors are category headings used only for navigation. Every sector below them is independently selectable, including intermediate sectors that also contain children. Selecting a parent never changes any descendant selection, so there is no hidden propagation or tri-state behavior. Laravel enforces the same non-root rule when saving. If an older stored submission contains a root ID, the form ignores that ID during refill and omits it on the next save.
 
-The native multi-select is retained because the assignment explicitly asks for a sectors selectbox. This preserves native platform behavior and fidelity to the supplied form, with the tradeoff that hierarchy is conveyed visually rather than exposed as nested semantic structure.
+The selector uses native checkboxes, buttons, nested lists, and a fixed-height responsive scroll area rather than a native multi-select or a third-party UI dependency. Categories start collapsed. Filtering is case-insensitive across each sector's full breadcrumb path, preserves the ancestors needed for context, shows a complete subtree when its category matches, and temporarily expands matching branches without changing the user's normal expansion state. A collapsed native `<details>` summary lists selected sectors in tree order with their full paths and individual Remove buttons.
 
 ### Submission storage
 
@@ -179,13 +179,13 @@ Laravel's API rate limiter uses Laravel's file cache and allows 60 requests per 
 
 ### Frontend structure
 
-The Angular component uses a reactive form so validation and form state are explicit. Signals represent loading, saving, success, and error states, while a typed API service keeps HTTP code separate from the form component.
+The Angular form uses reactive controls so validation and form state are explicit. The standalone tree selector receives sectors and selected IDs explicitly and emits ordered ID arrays; the parent continues to own the `FormControl`, server errors, and save lifecycle. Signals represent loading, saving, success, error, expansion, and filter states, while a typed API service keeps HTTP code separate from the form components.
 
 Bootstrap is included as CSS only. It provides consistent responsive layout, form, validation, and feedback styling without adding JavaScript components or another application-level abstraction.
 
 ### Accessibility
 
-Form controls have associated labels, help and error text is connected with `aria-describedby`, invalid controls receive visible feedback, and save results use an `output` element. The form remains keyboard-operable and uses the native multi-select control.
+Form controls have associated labels, help and error text is connected with `aria-describedby`, invalid controls receive visible feedback, and save results use an `output` element. The selector deliberately uses semantic nested lists instead of emulating an ARIA tree: native buttons expose `aria-expanded` and `aria-controls`, native checkbox labels expose selection, and the filter receives focus when sector validation fails. Result counts are announced politely, long labels wrap, and controls remain keyboard-operable at mobile widths.
 
 ## Project structure
 

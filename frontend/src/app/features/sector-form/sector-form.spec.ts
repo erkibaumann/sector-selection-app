@@ -78,9 +78,10 @@ describe('SectorForm', () => {
   it('renders the loaded sectors', () => {
     fixture.detectChanges();
 
-    const options = fixture.nativeElement.querySelectorAll('option');
+    const element = fixture.nativeElement as HTMLElement;
 
-    expect(options).toHaveLength(2);
+    expect(element.textContent).toContain('Manufacturing');
+    expect(element.querySelector('#sector-checkbox-1')).toBeNull();
   });
 
   it('shows the loading state until all form data has loaded', () => {
@@ -109,14 +110,19 @@ describe('SectorForm', () => {
   it('places child sectors after their parent', () => {
     fixture.detectChanges();
 
-    const options = Array.from(
-      fixture.nativeElement.querySelectorAll('option'),
-    ) as HTMLOptionElement[];
+    const element = fixture.nativeElement as HTMLElement;
+    const expandManufacturing = element.querySelector<HTMLButtonElement>(
+      'button[aria-controls="sector-children-1"]',
+    );
 
-    expect(options.map((option) => option.textContent?.trim())).toEqual([
-      'Manufacturing',
-      'Construction materials',
-    ]);
+    expandManufacturing?.click();
+    fixture.detectChanges();
+
+    const sectorNames = Array.from(element.querySelectorAll('.sector-node-name')).map((name) =>
+      name.textContent?.trim(),
+    );
+
+    expect(sectorNames).toEqual(['Manufacturing', 'Construction materials']);
   });
 
   it('shows errors when mandatory fields are empty', () => {
@@ -139,24 +145,40 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('You must agree to the terms.');
   });
 
+  const selectSector = (element: HTMLElement): void => {
+    const expandManufacturing = element.querySelector<HTMLButtonElement>(
+      'button[aria-controls="sector-children-1"]',
+    );
+
+    expandManufacturing?.click();
+    fixture.detectChanges();
+
+    const sectorCheckbox = element.querySelector<HTMLInputElement>('#sector-checkbox-19');
+
+    if (!sectorCheckbox) {
+      throw new Error('Expected the selectable sector checkbox to be rendered.');
+    }
+
+    sectorCheckbox.click();
+    fixture.detectChanges();
+  };
+
   const submitWithName = (name: string): HTMLElement => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
     const nameInput = element.querySelector<HTMLInputElement>('#name');
-    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
     const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
     const form = element.querySelector('form');
 
-    if (!nameInput || !sectorSelect || !termsCheckbox || !form) {
+    if (!nameInput || !termsCheckbox || !form) {
       throw new Error('Expected form controls were not rendered.');
     }
 
     nameInput.value = name;
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    sectorSelect.options[0].selected = true;
-    sectorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    selectSector(element);
 
     termsCheckbox.checked = true;
     termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
@@ -234,7 +256,7 @@ describe('SectorForm', () => {
 
     fixture.detectChanges();
 
-    expect(document.activeElement).toBe(element.querySelector('#sector-ids'));
+    expect(document.activeElement).toBe(element.querySelector('#sector-filter'));
   });
 
   it('marks invalid controls with aria-invalid', () => {
@@ -251,7 +273,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
-    expect(element.querySelector('#sector-ids')?.getAttribute('aria-invalid')).toBe('true');
+    expect(element.querySelector('#sector-selector')?.getAttribute('aria-invalid')).toBe('true');
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -279,7 +301,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    const controls = ['#name', '#sector-ids', '#agreed-to-terms'];
+    const controls = ['#name', '#sector-selector', '#agreed-to-terms'];
     const expectReferencesToResolve = (): void => {
       for (const selector of controls) {
         const describedBy = element.querySelector(selector)?.getAttribute('aria-describedby');
@@ -291,7 +313,7 @@ describe('SectorForm', () => {
     };
 
     expect(element.querySelector('#name')?.getAttribute('aria-describedby')).toBeNull();
-    expect(element.querySelector('#sector-ids')?.getAttribute('aria-describedby')).toBe(
+    expect(element.querySelector('#sector-selector')?.getAttribute('aria-describedby')).toBe(
       'sector-help',
     );
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBeNull();
@@ -303,7 +325,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('#name')?.getAttribute('aria-describedby')).toBe('name-error');
-    expect(element.querySelector('#sector-ids')?.getAttribute('aria-describedby')).toBe(
+    expect(element.querySelector('#sector-selector')?.getAttribute('aria-describedby')).toBe(
       'sector-help sector-error',
     );
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBe(
@@ -321,19 +343,17 @@ describe('SectorForm', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     const nameInput = element.querySelector<HTMLInputElement>('#name');
-    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
     const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
     const form = element.querySelector('form');
 
-    if (!nameInput || !sectorSelect || !termsCheckbox || !form) {
+    if (!nameInput || !termsCheckbox || !form) {
       throw new Error('Expected form controls were not rendered.');
     }
 
     nameInput.value = 'Ada Lovelace';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    sectorSelect.options[0].selected = true;
-    sectorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    selectSector(element);
 
     termsCheckbox.checked = true;
     termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
@@ -349,7 +369,7 @@ describe('SectorForm', () => {
 
     expect(submittedSubmission).toEqual({
       name: 'Ada Lovelace',
-      sector_ids: [1],
+      sector_ids: [19],
       agreed_to_terms: true,
     });
 
@@ -415,7 +435,7 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('The selected sector is no longer available.');
     expect(element.textContent).not.toContain('The submission could not be saved.');
     expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
-    expect(element.querySelector('#sector-ids')?.getAttribute('aria-invalid')).toBe('true');
+    expect(element.querySelector('#sector-selector')?.getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(element.querySelector('#name'));
   });
 
@@ -441,18 +461,16 @@ describe('SectorForm', () => {
 
     const element = fixture.nativeElement as HTMLElement;
     const nameInput = element.querySelector<HTMLInputElement>('#name');
-    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
     const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
     const form = element.querySelector('form');
 
-    if (!nameInput || !sectorSelect || !termsCheckbox || !form) {
+    if (!nameInput || !termsCheckbox || !form) {
       throw new Error('Expected form controls were not rendered.');
     }
 
     nameInput.value = 'Ada Lovelace';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-    sectorSelect.options[0].selected = true;
-    sectorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    selectSector(element);
     termsCheckbox.checked = true;
     termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -499,16 +517,33 @@ describe('SectorForm', () => {
 
     const element = fixture.nativeElement as HTMLElement;
     const nameInput = element.querySelector<HTMLInputElement>('#name');
-    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
     const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
 
     expect(nameInput?.value).toBe('Grace Hopper');
     expect(termsCheckbox?.checked).toBe(true);
 
-    const selectedSectors = Array.from(sectorSelect?.selectedOptions ?? []).map((option) =>
-      option.textContent?.trim(),
+    expect(element.querySelector('details summary')?.textContent).toContain('1 sector selected');
+    expect(element.querySelector('.selected-sector-path')?.textContent).toContain(
+      'Manufacturing › Construction materials',
     );
+  });
 
-    expect(selectedSectors).toEqual(['Construction materials']);
+  it('drops stale root ids while refilling so the next save removes them', () => {
+    existingSubmission = {
+      name: 'Grace Hopper',
+      sector_ids: [1, 19],
+      agreed_to_terms: true,
+    };
+
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(submittedSubmission?.sector_ids).toEqual([19]);
+    expect(element.querySelector('#sector-checkbox-1')).toBeNull();
   });
 });

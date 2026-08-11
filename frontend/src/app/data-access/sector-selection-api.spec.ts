@@ -57,7 +57,7 @@ describe('SectorSelectionApi', () => {
   it('saves a submission', () => {
     const submission: Submission = {
       name: 'Ada Lovelace',
-      sector_ids: [1, 19],
+      sector_ids: [6, 19],
       agreed_to_terms: true,
     };
 
@@ -82,7 +82,7 @@ describe('SectorSelectionApi', () => {
   it('loads the current session submission', () => {
     const submission: Submission = {
       name: 'Ada Lovelace',
-      sector_ids: [1, 19],
+      sector_ids: [6, 19],
       agreed_to_terms: true,
     };
 
