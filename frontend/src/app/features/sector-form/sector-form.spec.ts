@@ -310,6 +310,9 @@ describe('SectorForm', () => {
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBe(
       'terms-error',
     );
+    expect(element.querySelector('#name-error')?.getAttribute('role')).toBe('alert');
+    expect(element.querySelector('#sector-error')?.getAttribute('role')).toBe('alert');
+    expect(element.querySelector('#terms-error')?.getAttribute('role')).toBe('alert');
     expectReferencesToResolve();
   });
 

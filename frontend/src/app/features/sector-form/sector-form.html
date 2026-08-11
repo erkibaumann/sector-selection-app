@@ -40,7 +40,7 @@
               />
 
               @if (form.controls.name.touched && form.controls.name.invalid) {
-                <div class="invalid-feedback d-block" id="name-error">
+                <div class="invalid-feedback d-block" id="name-error" role="alert">
                   @if (serverErrors(form.controls.name); as errors) {
                     @for (error of errors; track error) {
                       {{ error }}
@@ -87,7 +87,7 @@
               </div>
 
               @if (form.controls.sector_ids.touched && form.controls.sector_ids.invalid) {
-                <div class="invalid-feedback d-block" id="sector-error">
+                <div class="invalid-feedback d-block" id="sector-error" role="alert">
                   @if (serverErrors(form.controls.sector_ids); as errors) {
                     @for (error of errors; track error) {
                       {{ error }}
@@ -120,7 +120,7 @@
               </div>
 
               @if (form.controls.agreed_to_terms.touched && form.controls.agreed_to_terms.invalid) {
-                <div class="invalid-feedback d-block" id="terms-error">
+                <div class="invalid-feedback d-block" id="terms-error" role="alert">
                   @if (serverErrors(form.controls.agreed_to_terms); as errors) {
                     @for (error of errors; track error) {
                       {{ error }}
