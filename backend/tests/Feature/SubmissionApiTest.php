@@ -24,6 +24,36 @@ it('rejects a submission with missing fields', function () {
         ->assertJsonValidationErrors(['name', 'sector_ids', 'agreed_to_terms']);
 });
 
+it('rejects a whitespace-only name', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => '   ',
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors('name');
+});
+
+it('rejects a name containing digits or symbols', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => 'J0hn #1',
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors('name');
+});
+
+it('accepts a name with accents, apostrophes and hyphens', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => "Ülo O'Brien-Kärner",
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ])->assertCreated();
+});
+
 it('rejects sector ids that do not exist', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 

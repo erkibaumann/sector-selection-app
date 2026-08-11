@@ -9,6 +9,8 @@ use Illuminate\Validation\Rule;
 
 class SaveSubmissionRequest extends FormRequest
 {
+    private const NAME_PATTERN = '/^\p{L}[\p{L}\p{M}\s\'’.-]*$/u';
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -17,7 +19,7 @@ class SaveSubmissionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'regex:'.self::NAME_PATTERN],
             'sector_ids' => ['required', 'array', 'min:1'],
             'sector_ids.*' => [
                 'integer',
@@ -25,6 +27,18 @@ class SaveSubmissionRequest extends FormRequest
                 Rule::exists(Sector::class, 'id'),
             ],
             'agreed_to_terms' => ['required', 'accepted'],
+        ];
+    }
+
+    /**
+     * Get the error messages for the defined validation rules.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.regex' => 'The name field may only contain letters, spaces, hyphens and apostrophes.',
         ];
     }
 }

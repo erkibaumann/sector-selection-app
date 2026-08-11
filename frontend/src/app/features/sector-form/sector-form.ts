@@ -1,11 +1,30 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
 import { Sector } from '../../models/sector';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
 interface SectorOption extends Sector {
   depth: number;
+}
+
+const NAME_PATTERN = /^\p{L}[\p{L}\p{M}\s'’.-]*$/u;
+
+function nonBlankName(control: AbstractControl): ValidationErrors | null {
+  return String(control.value ?? '').trim() === '' ? { required: true } : null;
+}
+
+function nameFormat(control: AbstractControl): ValidationErrors | null {
+  const name = String(control.value ?? '').trim();
+
+  return name === '' || NAME_PATTERN.test(name) ? null : { nameFormat: true };
 }
 @Component({
   selector: 'app-sector-form',
@@ -26,7 +45,7 @@ export class SectorForm implements OnInit {
   protected readonly form = new FormGroup({
     name: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(255)],
+      validators: [nonBlankName, nameFormat, Validators.maxLength(255)],
     }),
     sector_ids: new FormControl<number[]>([], {
       nonNullable: true,

@@ -37,13 +37,15 @@
                 required
               />
 
-              @if (form.controls.name.touched && form.controls.name.hasError('required')) {
-                <div class="invalid-feedback d-block" id="name-error">Your name is required.</div>
-              }
-
-              @if (form.controls.name.touched && form.controls.name.hasError('maxlength')) {
+              @if (form.controls.name.touched && form.controls.name.invalid) {
                 <div class="invalid-feedback d-block" id="name-error">
-                  Name must not exceed 255 characters.
+                  @if (form.controls.name.hasError('required')) {
+                    Your name is required.
+                  } @else if (form.controls.name.hasError('nameFormat')) {
+                    Name may only contain letters, spaces, hyphens and apostrophes.
+                  } @else if (form.controls.name.hasError('maxlength')) {
+                    Name must not exceed 255 characters.
+                  }
                 </div>
               }
             </div>

@@ -105,6 +105,57 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('You must agree to the terms.');
   });
 
+  const submitWithName = (name: string): HTMLElement => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+    const sectorSelect = element.querySelector<HTMLSelectElement>('#sector-ids');
+    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
+    const form = element.querySelector('form');
+
+    if (!nameInput || !sectorSelect || !termsCheckbox || !form) {
+      throw new Error('Expected form controls were not rendered.');
+    }
+
+    nameInput.value = name;
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    sectorSelect.options[0].selected = true;
+    sectorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    termsCheckbox.checked = true;
+    termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    fixture.detectChanges();
+
+    return element;
+  };
+
+  it('rejects a whitespace-only name', () => {
+    const element = submitWithName('   ');
+
+    expect(submittedSubmission).toBeUndefined();
+    expect(element.textContent).toContain('Your name is required.');
+  });
+
+  it('rejects a name containing digits or symbols', () => {
+    const element = submitWithName('J0hn #1');
+
+    expect(submittedSubmission).toBeUndefined();
+    expect(element.textContent).toContain(
+      'Name may only contain letters, spaces, hyphens and apostrophes.',
+    );
+  });
+
+  it('accepts a name with accents, apostrophes and hyphens', () => {
+    submitWithName("Ülo O'Brien-Kärner");
+
+    expect(submittedSubmission?.name).toBe("Ülo O'Brien-Kärner");
+  });
+
   it('saves a valid submission', () => {
     fixture.detectChanges();
 
