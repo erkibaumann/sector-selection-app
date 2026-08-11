@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
 import { Sector } from '../../models/sector';
 import {
@@ -34,6 +34,10 @@ function nameFormat(control: AbstractControl): ValidationErrors | null {
 })
 export class SectorForm implements OnInit {
   private readonly sectorSelectionApi = inject(SectorSelectionApi);
+
+  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
+  private readonly sectorSelect = viewChild<ElementRef<HTMLSelectElement>>('sectorSelect');
+  private readonly termsCheckbox = viewChild<ElementRef<HTMLInputElement>>('termsCheckbox');
 
   protected readonly sectors = signal<SectorOption[]>([]);
   protected readonly loading = signal(true);
@@ -92,7 +96,13 @@ export class SectorForm implements OnInit {
   protected onSubmit(): void {
     this.form.markAllAsTouched();
 
-    if (this.form.invalid || this.saving()) {
+    if (this.form.invalid) {
+      this.focusFirstInvalidControl();
+
+      return;
+    }
+
+    if (this.saving()) {
       return;
     }
 
@@ -114,6 +124,22 @@ export class SectorForm implements OnInit {
   }
   protected sectorIndentation(depth: number): string {
     return '\u00A0'.repeat(depth * 3);
+  }
+
+  protected showsError(control: AbstractControl): boolean {
+    return control.touched && control.invalid;
+  }
+
+  private focusFirstInvalidControl(): void {
+    const controls = this.form.controls;
+
+    if (controls.name.invalid) {
+      this.nameInput()?.nativeElement.focus();
+    } else if (controls.sector_ids.invalid) {
+      this.sectorSelect()?.nativeElement.focus();
+    } else if (controls.agreed_to_terms.invalid) {
+      this.termsCheckbox()?.nativeElement.focus();
+    }
   }
 
   private buildSectorOptions(sectors: Sector[]): SectorOption[] {

@@ -156,6 +156,84 @@ describe('SectorForm', () => {
     expect(submittedSubmission?.name).toBe("Ülo O'Brien-Kärner");
   });
 
+  it('focuses the name field when the whole form is empty', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(element.querySelector('#name'));
+  });
+
+  it('focuses the sector list when only the sectors are missing', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
+
+    if (!nameInput || !termsCheckbox) {
+      throw new Error('Expected form controls were not rendered.');
+    }
+
+    nameInput.value = 'Ada Lovelace';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    termsCheckbox.checked = true;
+    termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(element.querySelector('#sector-ids'));
+  });
+
+  it('marks invalid controls with aria-invalid', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('false');
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    fixture.detectChanges();
+
+    expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
+    expect(element.querySelector('#sector-ids')?.getAttribute('aria-invalid')).toBe('true');
+    expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('clears aria-invalid once a control becomes valid', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    fixture.detectChanges();
+
+    nameInput!.value = 'Ada Lovelace';
+    nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
+
+    fixture.detectChanges();
+
+    expect(nameInput?.getAttribute('aria-invalid')).toBe('false');
+  });
+
   it('saves a valid submission', () => {
     fixture.detectChanges();
 
