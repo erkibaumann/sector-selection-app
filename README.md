@@ -4,27 +4,35 @@ A small full-stack application for selecting one or more business sectors and sa
 
 ## Database dump
 
-The assignment asks for a full dump of structure and data. [`backend/database/dump.sql`](backend/database/dump.sql) is a plain `sqlite3 .dump` holding the schema and all 79 sectors:
+The assignment asks for a full dump of structure and data. [`backend/database/dump.sql`](backend/database/dump.sql) is a `pg_dump` holding the schema and all 79 sectors:
 
 ```bash
 cd backend
-sqlite3 database/database.sqlite < database/dump.sql
+docker compose exec -T postgres psql -U sector_selection -d sector_selection < database/dump.sql
 ```
 
-It deliberately contains no `sessions` or `submissions` rows — those are per-visitor runtime data, and session IDs are the credential that identifies a visitor. Loading it gives the same starting state as `php artisan migrate:fresh --seed`. Regenerate it after a schema change with `sqlite3 database/database.sqlite .dump > database/dump.sql`.
+It deliberately contains no `sessions` or `submissions` rows — those are per-visitor runtime data, and session IDs are the credential that identifies a visitor. Loading it gives the same starting state as `php artisan migrate:fresh --seed`. Regenerate it after a schema change with:
+
+```bash
+docker compose exec -T postgres pg_dump -U sector_selection \
+  --clean --if-exists --no-owner --no-privileges sector_selection > database/dump.sql
+```
+
+Both commands run inside the container so the client always matches the server version. That matters on restore: PostgreSQL 18 wraps dumps in `\restrict` / `\unrestrict` meta-commands, which a `psql` older than 18 does not understand.
 
 ## Technology stack
 
 - Angular 22 with standalone components, signals, and reactive forms
 - Bootstrap 5 CSS, English and Estonian interface translations
 - Laravel 13
-- SQLite
+- PostgreSQL 18
 - Pest for backend tests
 - Vitest through Angular's test runner for frontend tests
 
 ## Requirements
 
-- PHP 8.3 or newer with the SQLite extension
+- PHP 8.3 or newer with the `pdo_pgsql` extension
+- Docker with Compose v2 for the PostgreSQL container, or an existing PostgreSQL server — see below
 - Composer 2
 - Node.js 24.15 or newer (also pinned in `.nvmrc` and `frontend/package.json`)
 - npm 11 (the exact package-manager version is pinned in `frontend/package.json`)
@@ -35,9 +43,12 @@ Two terminals. Backend:
 
 ```bash
 cd backend
-composer setup   # installs, creates .env and the SQLite file, migrates, seeds
-composer dev     # serves on http://127.0.0.1:8000
+docker compose up -d --wait   # PostgreSQL 18, published on host port 5433
+composer setup                # installs, creates .env, migrates, seeds
+composer dev                  # serves on http://127.0.0.1:8000
 ```
+
+The container publishes **5433** rather than the default 5432, so it cannot collide with a PostgreSQL install already running on the machine. To use your own server instead, skip `docker compose up` and point the `DB_*` variables in `backend/.env` at it — `composer setup` creates the database itself if the role is allowed to.
 
 Frontend:
 
@@ -78,8 +89,11 @@ npm test -- --watch=false
 npm run build          # output in frontend/dist/frontend/browser
 
 cd ../backend
+docker compose up -d --wait   # the Pest suite runs against PostgreSQL
 php artisan test --compact
 ```
+
+Tests use a separate `sector_selection_test` database on the same server, created automatically on the first run, so they never touch development data.
 
 ## API
 
@@ -106,12 +120,13 @@ Laravel requires a name of at most 255 characters, at least one distinct existin
 ### Sectors
 
 - **Hierarchy via a self-referencing `parent_id`,** not indentation baked into names. The supplied option IDs stay as primary keys, and Angular derives the nesting and breadcrumb paths, so no presentation detail lives in the database.
-- **Siblings sort alphabetically at each level.** This reproduces the supplied ordering exactly, so no `sort_order` column is needed.
+- **Siblings sort alphabetically at each level.** This reproduces the supplied ordering exactly, so no `sort_order` column is needed. The sort that users see is the client's `localeCompare`, not the database's `ORDER BY`, because text ordering is a property of the cluster's collation: byte ordering, glibc, and ICU each place `CNC-machining` and `MIG, TIG, Aluminum welding` differently. No sibling group changes order under any of them, so the tree renders identically either way — but asserting a specific order in a backend test would only describe whichever cluster ran it.
 - **Only leaf sectors are selectable.** Sectors with children are navigation-only headings. Selections stay independent — no cascade, no tri-state. Laravel enforces the same rule, and the form drops any stored category ID when refilling.
 - **Native controls rather than a UI library.** The selector is checkboxes, buttons, nested lists, and a scroll area. A native `<select multiple>` needs undiscoverable Ctrl-click and behaves poorly on mobile; a third-party tree would add a second design system and an emulated ARIA tree in place of controls browsers already handle correctly.
 
 ### Backend
 
+- **PostgreSQL rather than SQLite.** The assignment left the backend free. SQLite is fewer moving parts, but it serialises writes and has no real type or collation system, so it answers questions differently from anything this would deploy on. A Compose service pins the version and keeps setup to one extra command, and the Pest suite runs against that same engine rather than an in-memory substitute. The benefit was not theoretical: the move surfaced a latent schema bug. `create_sectors_table` declared its primary key as a fluent `->primary()` modifier, which Laravel registers *after* the foreign key that `constrained()` adds inline, so PostgreSQL rejected a self-reference to a column that was not yet unique. SQLite had never complained, because its grammar inlines the primary key into `CREATE TABLE`.
 - **Session identity, no authentication.** "The user's own data during the session" is the session cookie. `updateOrCreate` keyed on the session ID keeps at most one submission per session, so a single `POST /api/submission` covers both create and edit.
 - **Many-to-many through `sector_submission`.** Keeps the data normalised and lets a submission hold any number of sectors.
 - **API routes prepend the `web` middleware group** — `$middleware->api(prepend: 'web')`. Sanctum's `statefulApi()` was used first, but it applies session middleware *conditionally*, only when `Origin` or `Referer` matches a configured domain; any other caller reached `$request->session()` with no session and got a `500` instead of a `419`. Prepending makes the dependency unconditional and declared. Sanctum then had no role left — no tokens, no guards, no auth — so it was removed.
@@ -147,7 +162,7 @@ This is a demonstration, so some concerns are shown rather than built out. Each 
 - **End-to-end tests.** Both sides are covered separately, but nothing drives a real browser against a real Laravel session. Playwright against the production build and a seeded database would cover the save, reload, and edit cycle — the one path that actually depends on both halves agreeing.
 - **A CI pipeline.** Pint, Pest, Vitest, and the production build on every push, with the bundle budget failing the build rather than printing a warning nobody reads.
 - **Error monitoring.** Failures currently collapse into a "please try again" message, which is right for the user and useless for the developer. Sentry or equivalent on both sides.
-- **Scheduled session pruning.** Sessions are database-backed and expire after 120 idle minutes, but rely on Laravel's cleanup lottery. A scheduled `session:prune`, and Redis rather than SQLite, would suit a real deployment.
+- **Scheduled session pruning.** Sessions are database-backed and expire after 120 idle minutes, but rely on Laravel's cleanup lottery. A scheduled `session:prune`, and Redis rather than the database, would suit a real deployment.
 
 ### Would build differently
 
