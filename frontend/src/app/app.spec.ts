@@ -19,13 +19,6 @@ describe('App', () => {
     }).compileComponents();
   });
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
   it('renders the sector form', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

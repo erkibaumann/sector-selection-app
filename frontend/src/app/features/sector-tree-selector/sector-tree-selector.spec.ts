@@ -156,12 +156,16 @@ describe('SectorTreeSelector', () => {
   it('filters case-insensitively by full path and renders categories as static rows', () => {
     filter('MANUFACTURING › FURNITURE › BEDROOM');
 
+    // Two categories are revealed on the way, but neither is a countable result.
     expect(element.textContent).toContain('1 sector found.');
+    expect(element.querySelectorAll('.sector-checkbox').length).toBe(1);
     expect(checkbox(385)).toBeTruthy();
     expect(element.textContent).not.toContain('Office');
     // Everything is forced open while filtering, so there is nothing to toggle.
     expect(element.querySelector('button[aria-controls="sector-children-1"]')).toBeNull();
     expect(element.querySelectorAll('.sector-category .sector-chevron-open').length).toBe(2);
+    expect(element.textContent).not.toContain('Expand all');
+    expect(element.textContent).not.toContain('Collapse all');
 
     // Clearing the field is what the browser's native search control does.
     filter('');
@@ -176,14 +180,6 @@ describe('SectorTreeSelector', () => {
     expect(element.textContent).toContain('Furniture');
     expect(element.textContent).toContain('Bedroom');
     expect(element.textContent).toContain('Office');
-  });
-
-  it('counts only selectable sectors, matching what the tree shows', () => {
-    filter('bedroom');
-
-    // Furniture is revealed as a category but is not a selectable result.
-    expect(element.textContent).toContain('1 sector found.');
-    expect(element.querySelectorAll('.sector-checkbox').length).toBe(1);
   });
 
   it('reports a polite count and clear no-results state', () => {
@@ -210,7 +206,7 @@ describe('SectorTreeSelector', () => {
     expect(checkbox(385).checked).toBe(true);
   });
 
-  it('shows selections as pills with the immediate parent and no disclosure', () => {
+  it('shows selections as pills in selection order, with the immediate parent', () => {
     fixture.componentRef.setInput('selectedIds', [392, 19, 392]);
     fixture.detectChanges();
 
@@ -227,8 +223,10 @@ describe('SectorTreeSelector', () => {
       pill.querySelector('.selected-sector-name')?.textContent?.trim(),
     );
 
-    expect(parents).toEqual(['Manufacturing ›', 'Furniture ›']);
-    expect(names).toEqual(['Construction materials', 'Office']);
+    expect(parents).toEqual(['Furniture ›', 'Manufacturing ›']);
+    expect(names).toEqual(['Office', 'Construction materials']);
+    // Below the cap there is nothing to collapse behind a toggle.
+    expect(element.querySelector('.selected-sector-toggle')).toBeNull();
   });
 
   it('removes a single pill by its full path and clears them all', () => {
@@ -248,14 +246,6 @@ describe('SectorTreeSelector', () => {
     element.querySelector<HTMLButtonElement>('.selected-sectors-header button')?.click();
 
     expect(selections.at(-1)).toEqual([]);
-  });
-
-  it('renders a pill for every selection up to the cap', () => {
-    fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
-    fixture.detectChanges();
-
-    expect(element.querySelectorAll('.selected-sector-pill').length).toBe(3);
-    expect(element.querySelector('.selected-sector-toggle')).toBeNull();
   });
 
   it('caps the pills at four and expands them on request', () => {
@@ -352,45 +342,42 @@ describe('SectorTreeSelector', () => {
     expect(toggle().textContent).toContain('Expand all');
   });
 
-  it('hides the expand-all control while filtering forces everything open', () => {
-    filter('bedroom');
+  // Removing a pill only moves focus once the pill is actually gone, which
+  // needs the emitted selection fed back in the way the parent form does it.
+  describe('focus after removing a selection', () => {
+    beforeEach(() => {
+      fixture.componentInstance.selectedIdsChange.subscribe((ids) =>
+        fixture.componentRef.setInput('selectedIds', ids),
+      );
+    });
 
-    expect(element.textContent).not.toContain('Expand all');
-    expect(element.textContent).not.toContain('Collapse all');
-  });
+    it('keeps focus in the pill list when a pill remains', async () => {
+      fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
+      fixture.detectChanges();
 
-  it('keeps focus in the pill list after removing one', async () => {
-    fixture.componentInstance.selectedIdsChange.subscribe((ids) =>
-      fixture.componentRef.setInput('selectedIds', ids),
-    );
-    fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
-    fixture.detectChanges();
+      const removeButtons = () =>
+        Array.from(element.querySelectorAll<HTMLButtonElement>('.selected-sector-remove'));
 
-    const removeButtons = () =>
-      Array.from(element.querySelectorAll<HTMLButtonElement>('.selected-sector-remove'));
+      removeButtons()[1].click();
+      fixture.detectChanges();
+      await fixture.whenStable();
 
-    removeButtons()[1].click();
-    fixture.detectChanges();
-    await fixture.whenStable();
+      // The button at that position is gone, so its replacement takes focus.
+      expect(removeButtons().length).toBe(2);
+      expect(document.activeElement).toBe(removeButtons()[1]);
+    });
 
-    // The button at that position is gone, so its replacement takes focus.
-    expect(removeButtons().length).toBe(2);
-    expect(document.activeElement).toBe(removeButtons()[1]);
-  });
+    it('returns focus to the filter when the last pill goes', async () => {
+      fixture.componentRef.setInput('selectedIds', [19]);
+      fixture.detectChanges();
 
-  it('returns focus to the filter when the last pill goes', async () => {
-    fixture.componentInstance.selectedIdsChange.subscribe((ids) =>
-      fixture.componentRef.setInput('selectedIds', ids),
-    );
-    fixture.componentRef.setInput('selectedIds', [19]);
-    fixture.detectChanges();
+      element.querySelector<HTMLButtonElement>('.selected-sector-remove')?.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
 
-    element.querySelector<HTMLButtonElement>('.selected-sector-remove')?.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    expect(element.querySelector('.selected-sector-remove')).toBeNull();
-    expect(document.activeElement).toBe(element.querySelector('#sector-filter'));
+      expect(element.querySelector('.selected-sector-remove')).toBeNull();
+      expect(document.activeElement).toBe(element.querySelector('#sector-filter'));
+    });
   });
 
   it('announces an empty selection state', () => {

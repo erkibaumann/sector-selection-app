@@ -28,6 +28,7 @@ interface SectorTreeNode extends Sector {
 interface SectorTree {
   roots: SectorTreeNode[];
   orderedNodes: SectorTreeNode[];
+  nodesById: ReadonlyMap<number, SectorTreeNode>;
 }
 
 const PATH_SEPARATOR = ' › ';
@@ -66,9 +67,14 @@ export class SectorTreeSelector {
 
   protected readonly tree = computed<SectorTree>(() => this.buildTree(this.sectors()));
   protected readonly selectedIdSet = computed(() => new Set(this.selectedIds()));
-  protected readonly selectedNodes = computed(() =>
-    this.tree().orderedNodes.filter((node) => node.selectable && this.selectedIdSet().has(node.id)),
-  );
+  /** A `Set` keeps insertion order, so selections stay in the order they were made. */
+  protected readonly selectedNodes = computed(() => {
+    const { nodesById } = this.tree();
+
+    return [...this.selectedIdSet()]
+      .map((id) => nodesById.get(id))
+      .filter((node): node is SectorTreeNode => node?.selectable === true);
+  });
 
   protected readonly showAllSelected = signal(false);
   protected readonly canCollapseSelected = computed(
@@ -198,7 +204,7 @@ export class SectorTreeSelector {
       selectedIds.delete(id);
     }
 
-    this.emitInTreeOrder(selectedIds);
+    this.selectedIdsChange.emit([...selectedIds]);
   }
 
   protected removeSelection(id: number): void {
@@ -206,7 +212,7 @@ export class SectorTreeSelector {
     const selectedIds = new Set(this.selectedIds());
 
     selectedIds.delete(id);
-    this.emitInTreeOrder(selectedIds);
+    this.selectedIdsChange.emit([...selectedIds]);
 
     // The button that had focus is gone; land on the pill that took its place.
     this.afterRender(() => {
@@ -224,7 +230,7 @@ export class SectorTreeSelector {
 
   protected clearSelection(): void {
     this.showAllSelected.set(false);
-    this.emitInTreeOrder(new Set());
+    this.selectedIdsChange.emit([]);
     this.afterRender(() => this.focus());
   }
 
@@ -267,14 +273,6 @@ export class SectorTreeSelector {
     if (expandedIds.size !== initialSize) {
       this.expandedIds.set(expandedIds);
     }
-  }
-
-  private emitInTreeOrder(selectedIds: ReadonlySet<number>): void {
-    this.selectedIdsChange.emit(
-      this.tree()
-        .orderedNodes.filter((node) => node.selectable && selectedIds.has(node.id))
-        .map((node) => node.id),
-    );
   }
 
   private buildTree(sectors: readonly Sector[]): SectorTree {
@@ -320,6 +318,6 @@ export class SectorTreeSelector {
 
     orderSubtree(roots, '');
 
-    return { roots, orderedNodes };
+    return { roots, orderedNodes, nodesById };
   }
 }

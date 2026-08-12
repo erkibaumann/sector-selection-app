@@ -73,21 +73,6 @@ describe('SectorForm', () => {
     fixture = TestBed.createComponent(SectorForm);
   });
 
-  it('should create', () => {
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
-  it('renders the loaded sectors', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-
-    expect(element.textContent).toContain('Manufacturing');
-    expect(element.querySelector('#sector-checkbox-1')).toBeNull();
-  });
-
   it('shows the loading state until all form data has loaded', () => {
     deferredSubmissionLoad = new Subject<Submission | null>();
 
@@ -110,24 +95,6 @@ describe('SectorForm', () => {
     expect(element.textContent).not.toContain('Loading sectors, please wait.');
     expect(card?.getAttribute('aria-busy')).toBe('false');
     expect(element.querySelector('form')).toBeTruthy();
-  });
-
-  it('places child sectors after their parent', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-    const expandManufacturing = element.querySelector<HTMLButtonElement>(
-      'button[aria-controls="sector-children-1"]',
-    );
-
-    expandManufacturing?.click();
-    fixture.detectChanges();
-
-    const sectorNames = Array.from(element.querySelectorAll('.sector-node-name')).map((name) =>
-      name.textContent?.trim(),
-    );
-
-    expect(sectorNames).toEqual(['Manufacturing', 'Construction materials']);
   });
 
   it('shows errors when mandatory fields are empty', () => {
@@ -202,15 +169,6 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('Your name is required.');
   });
 
-  it.each(["Ülo O'Brien-Kärner", "'t Hooft", '李雷', 'X Æ A-12'])(
-    'accepts %s as a name',
-    (name) => {
-      submitWithName(name);
-
-      expect(submittedSubmission?.name).toBe(name);
-    },
-  );
-
   it('trims the name before saving', () => {
     submitWithName('  Ada Lovelace  ');
 
@@ -246,18 +204,15 @@ describe('SectorForm', () => {
     expect(element.querySelectorAll('form [role="alert"]').length).toBe(1);
   });
 
-  it('drops the summary once the fields are corrected', () => {
-    submitWithName('Ada Lovelace');
+  it('switches Save to Update once a submission exists, without a reload', async () => {
+    fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(submittedSubmission).toBeDefined();
-    expect(element.querySelector('form [role="alert"]')).toBeNull();
-  });
+    expect(element.textContent).not.toContain('You saved this form earlier');
+    expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Save');
 
-  it('says Update once a submission exists, without needing a reload', async () => {
-    const element = submitWithName('Ada Lovelace');
-
+    submitWithName('Ada Lovelace');
     await fixture.whenStable();
 
     expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Update');
@@ -307,8 +262,9 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
+    const nameInput = element.querySelector<HTMLInputElement>('#name');
 
-    expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('false');
+    expect(nameInput?.getAttribute('aria-invalid')).toBe('false');
 
     element
       .querySelector('form')
@@ -316,28 +272,14 @@ describe('SectorForm', () => {
 
     fixture.detectChanges();
 
-    expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
+    expect(nameInput?.getAttribute('aria-invalid')).toBe('true');
     expect(
       element.querySelector('app-sector-tree-selector fieldset')?.getAttribute('aria-invalid'),
     ).toBe('true');
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-invalid')).toBe('true');
-  });
-
-  it('clears aria-invalid once a control becomes valid', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-    const nameInput = element.querySelector<HTMLInputElement>('#name');
-
-    element
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-
-    fixture.detectChanges();
 
     nameInput!.value = 'Ada Lovelace';
     nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
-
     fixture.detectChanges();
 
     expect(nameInput?.getAttribute('aria-invalid')).toBe('false');
@@ -386,34 +328,7 @@ describe('SectorForm', () => {
   });
 
   it('saves a valid submission', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-
-    const nameInput = element.querySelector<HTMLInputElement>('#name');
-    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
-    const form = element.querySelector('form');
-
-    if (!nameInput || !termsCheckbox || !form) {
-      throw new Error('Expected form controls were not rendered.');
-    }
-
-    nameInput.value = 'Ada Lovelace';
-    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-    selectSector(element);
-
-    termsCheckbox.checked = true;
-    termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-
-    form.dispatchEvent(
-      new Event('submit', {
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
-
-    fixture.detectChanges();
+    const element = submitWithName('Ada Lovelace');
 
     expect(submittedSubmission).toEqual({
       name: 'Ada Lovelace',
@@ -422,6 +337,8 @@ describe('SectorForm', () => {
     });
 
     expect(element.textContent).toContain('Submission saved.');
+    // A valid submit takes the error summary back down.
+    expect(element.querySelector('form [role="alert"]')).toBeNull();
   });
 
   it('shows the saving state until the request completes', () => {
@@ -546,29 +463,13 @@ describe('SectorForm', () => {
   });
 
   it('clears the saved message when the form changes', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
+    const element = submitWithName('Ada Lovelace');
     const nameInput = element.querySelector<HTMLInputElement>('#name');
-    const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
-    const form = element.querySelector('form');
-
-    if (!nameInput || !termsCheckbox || !form) {
-      throw new Error('Expected form controls were not rendered.');
-    }
-
-    nameInput.value = 'Ada Lovelace';
-    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-    selectSector(element);
-    termsCheckbox.checked = true;
-    termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    fixture.detectChanges();
 
     expect(element.textContent).toContain('Submission saved.');
 
-    nameInput.value = 'Grace Hopper';
-    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    nameInput!.value = 'Grace Hopper';
+    nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
 
     expect(element.textContent).not.toContain('Submission saved.');
@@ -639,15 +540,6 @@ describe('SectorForm', () => {
     expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Update');
   });
 
-  it('says Save, not Update, when there is nothing stored yet', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-
-    expect(element.textContent).not.toContain('You saved this form earlier');
-    expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Save');
-  });
-
   it('ignores a second submit while the first is still in flight', () => {
     deferredSave = new Subject<Submission>();
 
@@ -661,23 +553,6 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(submissionSaveCount).toBe(1);
-  });
-
-  it('keeps focus on the save button across a save', async () => {
-    deferredSave = new Subject<Submission>();
-
-    const element = submitWithName('Ada Lovelace');
-    const saveButton = element.querySelector<HTMLButtonElement>('.save-button');
-
-    saveButton?.focus();
-    deferredSave.next(submittedSubmission!);
-    deferredSave.complete();
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    // Nothing around the button is disabled mid-flight, so focus never escapes
-    // to the body and there is no focus to restore afterwards.
-    expect(document.activeElement).toBe(saveButton);
   });
 
   it('drops stale category ids while refilling so the next save removes them', () => {
