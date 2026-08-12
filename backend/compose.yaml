@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: sector_selection
+      POSTGRES_USER: sector_selection
+      POSTGRES_PASSWORD: sector_selection
+    ports:
+      # The container listens on 5432. Publishing 5433 keeps it clear of a
+      # PostgreSQL install already using the default port on the host.
+      - '5433:5432'
+    volumes:
+      # postgres:18 declares /var/lib/postgresql as its volume and places the
+      # cluster in $PGDATA=/var/lib/postgresql/18/docker beneath it.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sector_selection -d sector_selection']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
