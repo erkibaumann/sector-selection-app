@@ -22,8 +22,7 @@ describe('SectorTreeSelector', () => {
 
     fixture = TestBed.createComponent(SectorTreeSelector);
     fixture.componentRef.setInput('sectors', sectors);
-    fixture.componentRef.setInput('labelledBy', 'sector-label');
-    fixture.componentRef.setInput('describedBy', 'sector-help');
+    fixture.componentRef.setInput('describedBy', 'sector-error');
     fixture.detectChanges();
     element = fixture.nativeElement as HTMLElement;
   });
@@ -246,11 +245,7 @@ describe('SectorTreeSelector', () => {
 
     expect(selections.at(-1)).toEqual([19]);
 
-    element.querySelectorAll<HTMLButtonElement>('.selected-sectors button').forEach((button) => {
-      if (button.textContent?.includes('Clear all')) {
-        button.click();
-      }
-    });
+    element.querySelector<HTMLButtonElement>('.selected-sectors-header button')?.click();
 
     expect(selections.at(-1)).toEqual([]);
   });
@@ -418,14 +413,15 @@ describe('SectorTreeSelector', () => {
     fixture.componentRef.setInput('invalid', true);
     fixture.detectChanges();
 
-    const group = element.querySelector('[role="group"]');
+    const group = element.querySelector('fieldset');
     const filterInput = element.querySelector<HTMLInputElement>('#sector-filter');
 
     fixture.componentInstance.focus();
 
     expect(document.activeElement).toBe(filterInput);
-    expect(group?.getAttribute('aria-labelledby')).toBe('sector-label');
-    expect(group?.getAttribute('aria-describedby')).toBe('sector-help');
+    // Grouping comes from the native fieldset/legend pair, not from ARIA.
+    expect(group?.querySelector('legend')?.textContent).toContain('Sectors');
+    expect(group?.getAttribute('aria-describedby')).toBe('sector-help sector-error');
     expect(group?.getAttribute('aria-invalid')).toBe('true');
     expect(element.querySelector('[role="tree"]')).toBeNull();
 

@@ -44,7 +44,6 @@ export class SectorTreeSelector {
   readonly sectors = input<readonly Sector[]>([]);
   readonly selectedIds = input<readonly number[]>([]);
   readonly invalid = input(false);
-  readonly labelledBy = input('');
   readonly describedBy = input<string | null>(null);
 
   readonly selectedIdsChange = output<number[]>();
@@ -154,13 +153,7 @@ export class SectorTreeSelector {
    */
   protected clearFilter(): void {
     this.filterText.set('');
-
-    const inputElement = this.filterInput()?.nativeElement;
-
-    if (inputElement) {
-      inputElement.value = '';
-      inputElement.focus();
-    }
+    this.focus();
   }
 
   protected toggleShowAllSelected(): void {

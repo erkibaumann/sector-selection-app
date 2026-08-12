@@ -58,7 +58,6 @@ export class SectorForm implements OnInit {
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   private readonly sectorSelector = viewChild(SectorTreeSelector);
   private readonly termsCheckbox = viewChild<ElementRef<HTMLInputElement>>('termsCheckbox');
-  private readonly saveButton = viewChild<ElementRef<HTMLButtonElement>>('saveButton');
 
   /** A submission was already stored when this page loaded. */
   protected readonly restoredSubmission = signal(false);
@@ -125,6 +124,13 @@ export class SectorForm implements OnInit {
   }
 
   protected onSubmit(): void {
+    // The save button is marked aria-disabled rather than disabled, because
+    // disabling the element the user just activated throws focus to the body.
+    // This guard is what actually stops a second submit while one is in flight.
+    if (this.saving()) {
+      return;
+    }
+
     const nameControl = this.form.controls.name;
 
     nameControl.setValue(nameControl.value.trim());
@@ -138,11 +144,6 @@ export class SectorForm implements OnInit {
     }
 
     this.submitFailed.set(false);
-
-    if (this.saving()) {
-      return;
-    }
-
     this.saving.set(true);
     this.saved.set(false);
     this.saveError.set(false);
@@ -153,7 +154,6 @@ export class SectorForm implements OnInit {
         this.saved.set(true);
         this.storedSubmission.set(true);
         this.saving.set(false);
-        this.refocusSaveButton();
       },
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);
@@ -163,7 +163,6 @@ export class SectorForm implements OnInit {
           this.focusFirstInvalidControl();
         } else {
           this.saveError.set(true);
-          this.refocusSaveButton();
         }
       },
     });
@@ -173,6 +172,7 @@ export class SectorForm implements OnInit {
     const sectorControl = this.form.controls.sector_ids;
 
     sectorControl.setValue(selectedIds);
+    sectorControl.markAsDirty();
     sectorControl.markAsTouched();
   }
 
@@ -243,15 +243,6 @@ export class SectorForm implements OnInit {
     }
 
     return applied;
-  }
-
-  /**
-   * Submitting disables the fieldset and the button, which drops focus to the
-   * body. Once the request settles the button is live again, so focus returns
-   * there rather than leaving keyboard users at the top of the document.
-   */
-  private refocusSaveButton(): void {
-    afterNextRender(() => this.saveButton()?.nativeElement.focus(), { injector: this.injector });
   }
 
   /**

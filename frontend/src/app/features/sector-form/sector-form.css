@@ -60,6 +60,11 @@
   min-width: 12rem;
 }
 
+/* Reads as unavailable without the `disabled` attribute that would blur it. */
+.btn-busy {
+  opacity: 0.65;
+}
+
 .save-status {
   min-height: 1.5rem;
 }

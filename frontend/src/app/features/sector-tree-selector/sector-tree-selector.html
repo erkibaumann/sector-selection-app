@@ -1,13 +1,15 @@
-<div
-  class="sector-selector"
+<fieldset
   [class.sector-selector-invalid]="invalid()"
-  id="sector-selector"
-  role="group"
-  [attr.aria-labelledby]="labelledBy()"
-  [attr.aria-describedby]="describedBy()"
+  [attr.aria-describedby]="'sector-help' + (describedBy() === null ? '' : ' ' + describedBy())"
   [attr.aria-invalid]="invalid()"
 >
-  <div class="selected-sectors mb-3">
+  <legend class="sector-legend form-label fw-semibold mb-1">Sectors</legend>
+
+  <p class="form-text mt-0 mb-2" id="sector-help">
+    Only the sectors inside a category can be selected.
+  </p>
+
+  <div class="mb-3">
     <div class="selected-sectors-header">
       <p class="small text-body-secondary mb-0" id="selected-sectors-label" aria-live="polite">
         @if (selectedNodes().length === 0) {
@@ -25,57 +27,52 @@
       }
     </div>
 
-    <div class="selected-sectors-body">
-      @if (selectedNodes().length > 0) {
-        <ul
-          class="selected-sector-pills list-unstyled mb-0"
-          aria-labelledby="selected-sectors-label"
-        >
-          @for (node of visibleSelectedNodes(); track node.id) {
-            <li class="selected-sector-pill">
-              <span class="selected-sector-text">
-                @if (node.parent !== null) {
-                  <span class="selected-sector-parent"
-                    >{{ node.parent.name }}{{ pathSeparator }}</span
-                  >
-                }
-                <span class="selected-sector-name">{{ node.name }}</span>
-              </span>
+    @if (selectedNodes().length > 0) {
+      <ul class="selected-sector-pills list-unstyled mb-0" aria-labelledby="selected-sectors-label">
+        @for (node of visibleSelectedNodes(); track node.id) {
+          <li class="selected-sector-pill">
+            <span class="selected-sector-text">
+              @if (node.parent !== null) {
+                <span class="selected-sector-parent"
+                  >{{ node.parent.name }}{{ pathSeparator }}</span
+                >
+              }
+              <span class="selected-sector-name">{{ node.name }}</span>
+            </span>
 
-              <button
-                class="selected-sector-remove"
-                #removeButton
-                type="button"
-                [attr.aria-label]="'Remove ' + node.path"
-                (click)="removeSelection(node.id)"
-              >
-                <span aria-hidden="true">&#10005;</span>
-              </button>
-            </li>
-          }
+            <button
+              class="selected-sector-remove"
+              #removeButton
+              type="button"
+              [attr.aria-label]="'Remove ' + node.path"
+              (click)="removeSelection(node.id)"
+            >
+              <span aria-hidden="true">&#10005;</span>
+            </button>
+          </li>
+        }
 
-          @if (canCollapseSelected()) {
-            <li>
-              <button
-                class="selected-sector-toggle btn btn-sm btn-link"
-                type="button"
-                [attr.aria-expanded]="showAllSelected()"
-                (click)="toggleShowAllSelected()"
-              >
-                @if (showAllSelected()) {
-                  Show fewer
-                } @else {
-                  +{{ hiddenSelectedCount() }} more
-                }
-              </button>
-            </li>
-          }
-        </ul>
-      }
-    </div>
+        @if (canCollapseSelected()) {
+          <li>
+            <button
+              class="selected-sector-toggle btn btn-sm btn-link"
+              type="button"
+              [attr.aria-expanded]="showAllSelected()"
+              (click)="toggleShowAllSelected()"
+            >
+              @if (showAllSelected()) {
+                Show fewer
+              } @else {
+                +{{ hiddenSelectedCount() }} more
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
   </div>
 
-  <div class="sector-filter mb-2">
+  <div class="mb-2">
     <label class="form-label small mb-1" for="sector-filter">Filter sectors</label>
 
     <div class="sector-filter-input input-group">
@@ -88,6 +85,7 @@
         aria-controls="sector-tree-list"
         aria-describedby="sector-filter-results"
         placeholder="e.g. Printing, or Manufacturing › Wood"
+        [value]="filterText()"
         (input)="setFilter(filterInput.value)"
       />
 
@@ -144,7 +142,7 @@
       }
     </ul>
   </div>
-</div>
+</fieldset>
 
 <ng-template #treeNode let-node>
   <li>

@@ -37,9 +37,7 @@
               </p>
             }
 
-            <fieldset class="d-grid gap-4" [disabled]="saving()">
-              <legend class="visually-hidden">Your details</legend>
-
+            <div class="d-grid gap-4">
               <div>
                 @let nameErrors = errorMessages('name');
 
@@ -74,20 +72,11 @@
               <div>
                 @let sectorErrors = errorMessages('sector_ids');
 
-                <div class="form-label fw-semibold mb-1" id="sector-label">Sectors</div>
-
-                <div class="form-text mt-0 mb-2" id="sector-help">
-                  Only the sectors inside a category can be selected.
-                </div>
-
                 <app-sector-tree-selector
                   [sectors]="sectors()"
                   [selectedIds]="form.controls.sector_ids.value"
                   [invalid]="sectorErrors.length > 0"
-                  labelledBy="sector-label"
-                  [describedBy]="
-                    sectorErrors.length > 0 ? 'sector-help sector-error' : 'sector-help'
-                  "
+                  [describedBy]="sectorErrors.length > 0 ? 'sector-error' : null"
                   (selectedIdsChange)="onSectorIdsChange($event)"
                 />
 
@@ -108,24 +97,13 @@
                 <details class="mb-1">
                   <summary class="terms-summary">What you are agreeing to</summary>
 
-                  <div class="mt-2 mb-3 text-body-secondary">
-                    <p>
-                      Saving this form stores the name you enter, the sectors you select, and the
-                      fact that you accepted these terms.
-                    </p>
-
-                    <p>
-                      Your submission is tied to your current browser session. For as long as that
-                      session lasts you can return to this form, see what you saved, and change it.
-                      Clearing your cookies or letting the session expire leaves the submission
-                      unreachable.
-                    </p>
-
-                    <p class="mb-0">
-                      This form is a technical demonstration. Please do not enter anything you would
-                      not want stored in a demonstration database.
-                    </p>
-                  </div>
+                  <p class="mt-2 mb-3 text-body-secondary">
+                    Saving stores your name, the sectors you select, and your acceptance of these
+                    terms, tied to your current browser session — you can come back and change it
+                    for as long as that session lasts. This form is a technical demonstration, so
+                    please do not enter anything you would not want stored in a demonstration
+                    database.
+                  </p>
                 </details>
 
                 <div class="form-check terms-check">
@@ -153,14 +131,14 @@
                   </div>
                 }
               </div>
-            </fieldset>
+            </div>
 
             <div class="text-center">
               <button
                 class="save-button btn btn-primary"
-                #saveButton
                 type="submit"
-                [disabled]="saving()"
+                [class.btn-busy]="saving()"
+                [attr.aria-disabled]="saving()"
               >
                 @if (saving()) {
                   <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>

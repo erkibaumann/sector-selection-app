@@ -2,6 +2,16 @@
   display: block;
 }
 
+/*
+ * Bootstrap's reboot floats legends and sizes them like a heading. This one is
+ * a field label, so it is reset to plain flow content.
+ */
+.sector-legend {
+  float: none;
+  width: auto;
+  font-size: inherit;
+}
+
 /* Selected sectors */
 
 .selected-sectors-header {

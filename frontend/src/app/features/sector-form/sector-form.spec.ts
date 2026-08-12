@@ -13,6 +13,7 @@ describe('SectorForm', () => {
   let existingSubmission: Submission | null;
   let submissionLoadFails: boolean;
   let submissionLoadCount: number;
+  let submissionSaveCount: number;
   let submissionSaveError: unknown;
   let deferredSubmissionLoad: Subject<Submission | null> | undefined;
   let deferredSave: Subject<Submission> | undefined;
@@ -35,6 +36,7 @@ describe('SectorForm', () => {
     existingSubmission = null;
     submissionLoadFails = false;
     submissionLoadCount = 0;
+    submissionSaveCount = 0;
     submissionSaveError = undefined;
     deferredSubmissionLoad = undefined;
     deferredSave = undefined;
@@ -54,6 +56,7 @@ describe('SectorForm', () => {
             },
             saveSubmission: (submission: Submission) => {
               submittedSubmission = submission;
+              submissionSaveCount++;
 
               if (submissionSaveError !== undefined) {
                 return throwError(() => submissionSaveError);
@@ -312,7 +315,9 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
-    expect(element.querySelector('#sector-selector')?.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      element.querySelector('app-sector-tree-selector fieldset')?.getAttribute('aria-invalid'),
+    ).toBe('true');
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -340,7 +345,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    const controls = ['#name', '#sector-selector', '#agreed-to-terms'];
+    const controls = ['#name', 'app-sector-tree-selector fieldset', '#agreed-to-terms'];
     const expectReferencesToResolve = (): void => {
       for (const selector of controls) {
         const describedBy = element.querySelector(selector)?.getAttribute('aria-describedby');
@@ -352,9 +357,9 @@ describe('SectorForm', () => {
     };
 
     expect(element.querySelector('#name')?.getAttribute('aria-describedby')).toBeNull();
-    expect(element.querySelector('#sector-selector')?.getAttribute('aria-describedby')).toBe(
-      'sector-help',
-    );
+    expect(
+      element.querySelector('app-sector-tree-selector fieldset')?.getAttribute('aria-describedby'),
+    ).toBe('sector-help');
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBeNull();
     expectReferencesToResolve();
 
@@ -364,9 +369,9 @@ describe('SectorForm', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('#name')?.getAttribute('aria-describedby')).toBe('name-error');
-    expect(element.querySelector('#sector-selector')?.getAttribute('aria-describedby')).toBe(
-      'sector-help sector-error',
-    );
+    expect(
+      element.querySelector('app-sector-tree-selector fieldset')?.getAttribute('aria-describedby'),
+    ).toBe('sector-help sector-error');
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-describedby')).toBe(
       'terms-error',
     );
@@ -422,10 +427,13 @@ describe('SectorForm', () => {
 
     const element = submitWithName('Ada Lovelace');
     const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
-    const fieldset = element.querySelector<HTMLFieldSetElement>('fieldset');
 
-    expect(submitButton?.disabled).toBe(true);
-    expect(fieldset?.disabled).toBe(true);
+    // Nothing is truly disabled: the fields stay editable because a request
+    // resolving in milliseconds is not a window a user can type into, and the
+    // button stays focusable so activating it does not throw focus to the body.
+    expect(submitButton?.getAttribute('aria-disabled')).toBe('true');
+    expect(submitButton?.disabled).toBe(false);
+    expect(element.querySelector<HTMLInputElement>('#name')?.disabled).toBe(false);
     expect(element.textContent).toContain('Saving...');
     expect(element.textContent).toContain('Saving submission.');
 
@@ -433,8 +441,7 @@ describe('SectorForm', () => {
     deferredSave.complete();
     fixture.detectChanges();
 
-    expect(submitButton?.disabled).toBe(false);
-    expect(fieldset?.disabled).toBe(false);
+    expect(submitButton?.getAttribute('aria-disabled')).toBe('false');
     expect(element.textContent).not.toContain('Saving submission.');
     expect(element.textContent).toContain('Submission saved.');
   });
@@ -448,7 +455,7 @@ describe('SectorForm', () => {
     const form = element.querySelector('form');
 
     expect(element.textContent).toContain('The submission could not be saved.');
-    expect(submitButton?.disabled).toBe(false);
+    expect(submitButton?.getAttribute('aria-disabled')).toBe('false');
     expect(nameInput?.value).toBe('Ada Lovelace');
 
     submissionSaveError = undefined;
@@ -476,7 +483,9 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('The selected sector is no longer available.');
     expect(element.textContent).not.toContain('The submission could not be saved.');
     expect(element.querySelector('#name')?.getAttribute('aria-invalid')).toBe('true');
-    expect(element.querySelector('#sector-selector')?.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      element.querySelector('app-sector-tree-selector fieldset')?.getAttribute('aria-invalid'),
+    ).toBe('true');
     expect(document.activeElement).toBe(element.querySelector('#name'));
   });
 
@@ -600,13 +609,36 @@ describe('SectorForm', () => {
     expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Save');
   });
 
-  it('returns focus to the save button once a save settles', async () => {
+  it('ignores a second submit while the first is still in flight', () => {
+    deferredSave = new Subject<Submission>();
+
     const element = submitWithName('Ada Lovelace');
 
+    expect(submissionSaveCount).toBe(1);
+
+    // The button is only aria-disabled, so a second activation still reaches
+    // the handler and the in-flight guard is what has to stop it.
+    element.querySelector<HTMLButtonElement>('.save-button')?.click();
+    fixture.detectChanges();
+
+    expect(submissionSaveCount).toBe(1);
+  });
+
+  it('keeps focus on the save button across a save', async () => {
+    deferredSave = new Subject<Submission>();
+
+    const element = submitWithName('Ada Lovelace');
+    const saveButton = element.querySelector<HTMLButtonElement>('.save-button');
+
+    saveButton?.focus();
+    deferredSave.next(submittedSubmission!);
+    deferredSave.complete();
+    fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(submittedSubmission).toBeDefined();
-    expect(document.activeElement).toBe(element.querySelector('.save-button'));
+    // Nothing around the button is disabled mid-flight, so focus never escapes
+    // to the body and there is no focus to restore afterwards.
+    expect(document.activeElement).toBe(saveButton);
   });
 
   it('drops stale category ids while refilling so the next save removes them', () => {
