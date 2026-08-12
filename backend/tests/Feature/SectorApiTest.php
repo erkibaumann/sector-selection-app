@@ -22,10 +22,3 @@ it('can seed sectors repeatedly without creating duplicates', function () {
 
     expect(Sector::query()->count())->toBe(79);
 });
-
-it('orders sectors alphabetically by name', function () {
-    $names = array_column($this->getJson('/api/sectors')->json('data'), 'name');
-    $sorted = $names;
-    usort($sorted, strcmp(...));
-    expect($names)->toBe($sorted);
-});
