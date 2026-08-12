@@ -1,23 +1,44 @@
+# An explicit project name. Without it Compose derives one from the directory,
+# which is `backend` here — so the volume would be `backend_postgres-data` and
+# would be shared with any other project that also lives in a `backend/` folder.
+name: sector-selection
+
 services:
   postgres:
     image: postgres:18
+    # Compose reads backend/.env, the same file Laravel uses, so the port and
+    # credentials have one source of truth. The defaults apply on a fresh clone,
+    # where .env does not exist until `composer setup` creates it.
     environment:
-      POSTGRES_DB: sector_selection
-      POSTGRES_USER: sector_selection
-      POSTGRES_PASSWORD: sector_selection
+      POSTGRES_DB: ${DB_DATABASE:-sector_selection}
+      POSTGRES_USER: ${DB_USERNAME:-sector_selection}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-sector_selection}
     ports:
-      # The container listens on 5432. Publishing 5433 keeps it clear of a
-      # PostgreSQL install already using the default port on the host.
-      - '5433:5432'
+      # The container listens on 5432. The host port avoids 5432-5435, where a
+      # local PostgreSQL install and its secondary instances live: if one of
+      # those answered instead of this container, the failure would look like
+      # bad credentials rather than a wrong server. 15432 is also below the
+      # ephemeral range (49152+), so the OS will not take it transiently.
+      - '${DB_PORT:-15432}:5432'
     volumes:
       # postgres:18 declares /var/lib/postgresql as its volume and places the
       # cluster in $PGDATA=/var/lib/postgresql/18/docker beneath it.
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sector_selection -d sector_selection']
+      # Deliberately not pg_isready: that only asks whether the server answers
+      # and never authenticates, so it reports healthy against a cluster with
+      # none of these credentials. This connects over TCP as the configured
+      # role, which is what Laravel does, so `up --wait` cannot pass while the
+      # role, password, or database is wrong.
+      test:
+        [
+          'CMD-SHELL',
+          'PGPASSWORD=$$POSTGRES_PASSWORD psql -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB -qtAc "select 1" > /dev/null',
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
 
 volumes:
   postgres-data:

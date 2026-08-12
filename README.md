@@ -2,24 +2,6 @@
 
 A small full-stack application for selecting one or more business sectors and saving the selection for the current browser session. The form is built with Angular, while Laravel provides the API, validation, persistence, and session handling.
 
-## Database dump
-
-The assignment asks for a full dump of structure and data. [`backend/database/dump.sql`](backend/database/dump.sql) is a `pg_dump` holding the schema and all 79 sectors:
-
-```bash
-cd backend
-docker compose exec -T postgres psql -U sector_selection -d sector_selection < database/dump.sql
-```
-
-It deliberately contains no `sessions` or `submissions` rows — those are per-visitor runtime data, and session IDs are the credential that identifies a visitor. Loading it gives the same starting state as `php artisan migrate:fresh --seed`. Regenerate it after a schema change with:
-
-```bash
-docker compose exec -T postgres pg_dump -U sector_selection \
-  --clean --if-exists --no-owner --no-privileges sector_selection > database/dump.sql
-```
-
-Both commands run inside the container so the client always matches the server version. That matters on restore: PostgreSQL 18 wraps dumps in `\restrict` / `\unrestrict` meta-commands, which a `psql` older than 18 does not understand.
-
 ## Technology stack
 
 - Angular 22 with standalone components, signals, and reactive forms
@@ -43,14 +25,13 @@ Two terminals. Backend:
 
 ```bash
 cd backend
-docker compose up -d --wait   # PostgreSQL 18, published on host port 5433
-composer setup                # installs, creates .env, migrates, seeds
+docker compose up -d --wait   # starts PostgreSQL 18 and waits until it accepts the app's credentials
+composer setup                # installs dependencies, creates .env, migrates, seeds the 79 sectors
 composer dev                  # serves on http://127.0.0.1:8000
 ```
 
-The container publishes **5433** rather than the default 5432, so it cannot collide with a PostgreSQL install already running on the machine. To use your own server instead, skip `docker compose up` and point the `DB_*` variables in `backend/.env` at it — `composer setup` creates the database itself if the role is allowed to.
 
-Frontend:
+Frontend, in a second terminal:
 
 ```bash
 cd frontend
@@ -60,15 +41,11 @@ npm start
 
 Open `http://localhost:4200`.
 
-To rebuild the local database later, `php artisan migrate:fresh --seed` — this deletes existing submissions.
+To rebuild the local database later, `cd backend` and then `php artisan migrate:fresh --seed` — this deletes existing submissions.
 
-### Why the dev server proxies `/api`
+### The database port
 
-Angular serves on `localhost:4200` and Laravel on `127.0.0.1:8000`. A browser treats those as two different **origins** (scheme + host + port), and it restricts what one origin may do to another: cross-origin requests need CORS headers, and cookies need extra opt-ins on both ends to travel at all.
-
-That matters here because Laravel's session cookie is the only thing identifying a visitor, and its `XSRF-TOKEN` cookie is what authorises a save. If the browser withholds them, nothing works.
-
-`frontend/proxy.conf.json` makes the Angular dev server forward `/api` to Laravel, so the browser only ever talks to `localhost:4200` and both cookies are sent automatically. It also means Angular requests relative paths like `/api/sectors` with no backend host anywhere in the code — nothing to configure per environment, and no risk of shipping a development URL to production, where the web server routes `/api` the same way.
+The container publishes host port **15432**, set by `DB_PORT` in `backend/.env`. Both Laravel and `compose.yaml` read that one value, so changing it there changes both — run `docker compose up -d` again afterwards to republish.
 
 ## Using the application
 
@@ -94,6 +71,14 @@ php artisan test --compact
 ```
 
 Tests use a separate `sector_selection_test` database on the same server, created automatically on the first run, so they never touch development data.
+
+## Database dump
+
+The assignment asks for a full dump of structure and data. [`backend/database/dump.sql`](backend/database/dump.sql) is a `pg_dump` holding the schema and all 79 sectors.
+
+**Local setup does not need it** — `composer setup` already seeds the same sectors.
+
+It deliberately contains no `sessions` or `submissions` rows — those are per-visitor runtime data, and session IDs are the credential that identifies a visitor. Loading it gives the same starting state as `php artisan migrate:fresh --seed`. Regenerate it after a schema change with:
 
 ## API
 
