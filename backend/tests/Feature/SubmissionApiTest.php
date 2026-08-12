@@ -112,6 +112,36 @@ it('uses human-readable field names in validation messages', function () {
     ]);
 });
 
+it('answers validation errors in the requested language', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => '',
+        'sector_ids' => ['invalid'],
+        'agreed_to_terms' => false,
+    ], ['Accept-Language' => 'et'])->assertUnprocessable()->assertJson([
+        'errors' => [
+            'name' => ['Väli nimi on kohustuslik.'],
+            'sector_ids.0' => ['Väli sektor peab olema täisarv.'],
+            'agreed_to_terms' => ['Väli tingimustega nõustumine tuleb aktsepteerida.'],
+        ],
+    ]);
+});
+
+it('falls back to English for a language it has no translations for', function () {
+    $this->withCookie(config('session.cookie'), Str::random(40));
+
+    $this->postJson('/api/submission', [
+        'name' => '',
+        'sector_ids' => [342],
+        'agreed_to_terms' => true,
+    ], ['Accept-Language' => 'fr-FR'])->assertUnprocessable()->assertJson([
+        'errors' => [
+            'name' => ['The name field is required.'],
+        ],
+    ]);
+});
+
 it('rejects duplicate sector ids', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 

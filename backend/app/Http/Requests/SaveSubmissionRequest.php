@@ -34,17 +34,8 @@ class SaveSubmissionRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom attributes for validator errors.
-     *
-     * @return array<string, string>
+    /*
+     * Field names are not listed here. They live under `validation.attributes`
+     * in `lang/`, so each locale names the fields in its own language.
      */
-    public function attributes(): array
-    {
-        return [
-            'sector_ids' => 'sectors',
-            'sector_ids.*' => 'sector',
-            'agreed_to_terms' => 'terms agreement',
-        ];
-    }
 }

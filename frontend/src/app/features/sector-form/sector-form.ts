@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
+import { Dictionary, Language, LANGUAGES, Translations } from '../../i18n/translations';
 import { Sector } from '../../models/sector';
 import { Submission } from '../../models/submission';
 import { SectorTreeSelector } from '../sector-tree-selector/sector-tree-selector';
@@ -27,14 +28,18 @@ interface ValidationErrorResponse {
   errors?: Record<string, unknown>;
 }
 
-/** Client-side fallbacks, keyed by the validator that produced them. */
-const ERROR_MESSAGES: Record<keyof Submission, Record<string, string>> = {
+/**
+ * Client-side fallbacks, keyed by the validator that produced them. The values
+ * name a message rather than holding one, so switching language re-renders
+ * errors that are already on screen.
+ */
+const ERROR_KEYS: Record<keyof Submission, Record<string, keyof Dictionary['errors']>> = {
   name: {
-    required: 'Your name is required.',
-    maxlength: 'Name must not exceed 255 characters.',
+    required: 'nameRequired',
+    maxlength: 'nameMaxLength',
   },
-  sector_ids: { required: 'Choose at least one sector.' },
-  agreed_to_terms: { required: 'Please agree to the terms to continue.' },
+  sector_ids: { required: 'sectorsRequired' },
+  agreed_to_terms: { required: 'termsRequired' },
 };
 
 function nonBlankName(control: AbstractControl): ValidationErrors | null {
@@ -54,6 +59,11 @@ function isSubmissionField(field: string): field is keyof Submission {
 export class SectorForm implements OnInit {
   private readonly sectorSelectionApi = inject(SectorSelectionApi);
   private readonly injector = inject(Injector);
+  private readonly translations = inject(Translations);
+
+  protected readonly t = this.translations.t;
+  protected readonly language = this.translations.language;
+  protected readonly languages = LANGUAGES;
 
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   private readonly sectorSelector = viewChild(SectorTreeSelector);
@@ -168,6 +178,10 @@ export class SectorForm implements OnInit {
     });
   }
 
+  protected changeLanguage(code: string): void {
+    this.language.set(code as Language);
+  }
+
   protected onSectorIdsChange(selectedIds: number[]): void {
     const sectorControl = this.form.controls.sector_ids;
 
@@ -197,9 +211,9 @@ export class SectorForm implements OnInit {
 
     return (
       this.serverErrors(control) ??
-      Object.entries(ERROR_MESSAGES[field])
+      Object.entries(ERROR_KEYS[field])
         .filter(([validator]) => control.hasError(validator))
-        .map(([, message]) => message)
+        .map(([, key]) => this.t().errors[key])
     );
   }
 

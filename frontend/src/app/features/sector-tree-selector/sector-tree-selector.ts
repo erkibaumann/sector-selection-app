@@ -15,6 +15,7 @@ import {
   viewChildren,
 } from '@angular/core';
 
+import { Translations } from '../../i18n/translations';
 import { Sector } from '../../models/sector';
 
 interface SectorTreeNode extends Sector {
@@ -49,6 +50,7 @@ export class SectorTreeSelector {
   readonly selectedIdsChange = output<number[]>();
 
   protected readonly pathSeparator = PATH_SEPARATOR;
+  protected readonly t = inject(Translations).t;
 
   private readonly injector = inject(Injector);
   private readonly filterInput = viewChild<ElementRef<HTMLInputElement>>('filterInput');

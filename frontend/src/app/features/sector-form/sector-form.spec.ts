@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { SectorForm } from './sector-form';
 import { Sector } from '../../models/sector';
 import { SectorSelectionApi } from '../../data-access/sector-selection-api';
+import { Translations } from '../../i18n/translations';
 import { of, Subject, throwError } from 'rxjs';
 import { Submission } from '../../models/submission';
 
@@ -94,7 +95,8 @@ describe('SectorForm', () => {
 
     const element = fixture.nativeElement as HTMLElement;
     const card = element.querySelector('section');
-    const loadingStatus = element.querySelector('[role="status"]');
+    // <output> carries an implicit status role, so no role attribute is set.
+    const loadingStatus = element.querySelector('output');
 
     expect(element.textContent).toContain('Loading sectors, please wait.');
     expect(card?.getAttribute('aria-busy')).toBe('true');
@@ -504,6 +506,43 @@ describe('SectorForm', () => {
 
     expect(element.textContent).not.toContain('The name is not available.');
     expect(nameInput?.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('translates the whole form, including errors already on screen', () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(element.textContent).toContain('Your name is required.');
+
+    const select = element.querySelector<HTMLSelectElement>('#language');
+
+    // The switcher sits above the heading, outside the form element, so it is
+    // never a step in filling the form in.
+    expect(element.querySelector('form #language')).toBeNull();
+    expect(select?.labels?.item(0)?.textContent).toContain('Language');
+
+    select!.value = 'et';
+    select!.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(TestBed.inject(Translations).language()).toBe('et');
+    expect(select?.labels?.item(0)?.textContent).toContain('Keel');
+
+    expect(element.textContent).toContain('Sektorite valik');
+    // Error messages name a dictionary key rather than holding a sentence, so
+    // messages already on screen follow the switch.
+    expect(element.textContent).toContain('Nimi on kohustuslik.');
+    expect(element.textContent).toContain('Valige vähemalt üks sektor.');
+    expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Salvesta');
+    // The selector is a separate component reading the same dictionary.
+    expect(element.querySelector('legend')?.textContent).toContain('Sektorid');
+    expect(element.textContent).not.toContain('Your name is required.');
   });
 
   it('clears the saved message when the form changes', () => {

@@ -6,42 +6,59 @@
       [attr.aria-busy]="loading()"
     >
       <div class="card-body p-4 p-md-5">
+        <!-- Sits above the heading and outside the form, so switching language
+             is never a step in filling the form in. -->
+        <div class="d-flex align-items-center justify-content-end gap-2 mb-3">
+          <!-- The options name themselves, so the label is for assistive
+               technology only rather than repeating what is already visible. -->
+          <label class="visually-hidden" for="language">{{ t().languageLabel }}</label>
+
+          <select
+            class="form-select form-select-sm w-auto"
+            #languageSelect
+            id="language"
+            [value]="language()"
+            (change)="changeLanguage(languageSelect.value)"
+          >
+            @for (option of languages; track option.code) {
+              <option [value]="option.code">{{ option.name }}</option>
+            }
+          </select>
+        </div>
+
         <header class="mb-4">
-          <h1 class="h2 mb-2" id="sector-form-title">Sector selection</h1>
-          <p class="mb-0 text-body-secondary">
-            Save your name and the sectors you work in. You can change your answers at any time
-            during this session.
-          </p>
+          <h1 class="h2 mb-2" id="sector-form-title">{{ t().form.title }}</h1>
+          <p class="mb-0 text-body-secondary">{{ t().form.intro }}</p>
         </header>
 
         @if (loading()) {
-          <p class="alert alert-info mb-0" role="status">Loading sectors, please wait.</p>
+          <output class="alert alert-info mb-0 d-block">{{ t().form.loading }}</output>
         } @else if (loadError()) {
           <div class="alert alert-danger mb-0" role="alert">
-            <p>Could not load form data. Please try again.</p>
-            <button class="btn btn-outline-danger" type="button" (click)="load()">Try again</button>
+            <p>{{ t().form.loadError }}</p>
+            <button class="btn btn-outline-danger" type="button" (click)="load()">
+              {{ t().form.tryAgain }}
+            </button>
           </div>
         } @else {
           @if (restoredSubmission()) {
-            <p class="alert alert-info" role="status">
-              You saved this form earlier in this session. Change anything you like and save again.
-            </p>
+            <!-- Not a live region: this is standing content that arrives with
+                 the form, not an update to something already on screen. -->
+            <p class="alert alert-info">{{ t().form.restored }}</p>
           }
 
-          <p class="form-text mt-0 mb-4">All fields are required.</p>
+          <p class="form-text mt-0 mb-4">{{ t().form.allFieldsRequired }}</p>
 
           <form class="d-grid gap-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
             @if (submitFailed() && hasErrors()) {
-              <p class="alert alert-danger mb-0" role="alert">
-                Please correct the highlighted fields.
-              </p>
+              <p class="alert alert-danger mb-0" role="alert">{{ t().form.correctFields }}</p>
             }
 
             <div class="d-grid gap-4">
               <div>
                 @let nameErrors = errorMessages('name');
 
-                <label class="form-label fw-semibold" for="name">Your name</label>
+                <label class="form-label fw-semibold" for="name">{{ t().form.nameLabel }}</label>
 
                 <input
                   class="name-input form-control"
@@ -92,18 +109,12 @@
               <div>
                 @let termsErrors = errorMessages('agreed_to_terms');
 
-                <div class="form-label fw-semibold mb-1">Terms</div>
+                <div class="form-label fw-semibold mb-1">{{ t().form.termsLabel }}</div>
 
                 <details class="mb-1">
-                  <summary class="terms-summary">What you are agreeing to</summary>
+                  <summary class="terms-summary">{{ t().form.termsSummary }}</summary>
 
-                  <p class="mt-2 mb-3 text-body-secondary">
-                    Saving stores your name, the sectors you select, and your acceptance of these
-                    terms, tied to your current browser session — you can come back and change it
-                    for as long as that session lasts. This form is a technical demonstration, so
-                    please do not enter anything you would not want stored in a demonstration
-                    database.
-                  </p>
+                  <p class="mt-2 mb-3 text-body-secondary">{{ t().form.termsBody }}</p>
                 </details>
 
                 <div class="form-check terms-check">
@@ -120,7 +131,9 @@
                     required
                   />
 
-                  <label class="form-check-label" for="agreed-to-terms">I agree to the terms</label>
+                  <label class="form-check-label" for="agreed-to-terms">{{
+                    t().form.agreeLabel
+                  }}</label>
                 </div>
 
                 @if (termsErrors.length > 0) {
@@ -142,27 +155,25 @@
               >
                 @if (saving()) {
                   <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                  Saving...
+                  {{ t().form.saving }}
                 } @else if (storedSubmission()) {
-                  Update
+                  {{ t().form.update }}
                 } @else {
-                  Save
+                  {{ t().form.save }}
                 }
               </button>
             </div>
 
-            <div class="save-status text-center text-success" role="status">
+            <output class="save-status d-block text-center text-success">
               @if (saving()) {
-                Saving submission.
+                {{ t().form.savingStatus }}
               } @else if (saved()) {
-                Submission saved.
+                {{ t().form.savedStatus }}
               }
-            </div>
+            </output>
 
             @if (saveError()) {
-              <p class="alert alert-danger mb-0" role="alert">
-                The submission could not be saved. Please try again.
-              </p>
+              <p class="alert alert-danger mb-0" role="alert">{{ t().form.saveError }}</p>
             }
           </form>
         }
