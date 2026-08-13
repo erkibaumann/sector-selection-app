@@ -151,7 +151,7 @@
                 class="save-button btn btn-primary"
                 type="submit"
                 [class.btn-busy]="saving()"
-                [attr.aria-disabled]="saving()"
+                [attr.aria-disabled]="saving() ? 'true' : null"
               >
                 @if (saving()) {
                   <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>

@@ -8,12 +8,12 @@ describe('SectorTreeSelector', () => {
   let element: HTMLElement;
 
   const sectors: Sector[] = [
-    { id: 392, parent_id: 13, name: 'Office' },
+    { id: 150, parent_id: 5, name: 'Book/Periodicals printing' },
     { id: 2, parent_id: null, name: 'Service' },
-    { id: 19, parent_id: 1, name: 'Construction materials' },
-    { id: 385, parent_id: 13, name: 'Bedroom' },
-    { id: 13, parent_id: 1, name: 'Furniture' },
-    { id: 25, parent_id: 2, name: 'Business services' },
+    { id: 18, parent_id: 1, name: 'Electronics and Optics' },
+    { id: 148, parent_id: 5, name: 'Advertising' },
+    { id: 5, parent_id: 1, name: 'Printing' },
+    { id: 141, parent_id: 2, name: 'Translation services' },
     { id: 1, parent_id: null, name: 'Manufacturing' },
   ];
 
@@ -85,7 +85,7 @@ describe('SectorTreeSelector', () => {
       element.querySelectorAll('#sector-children-1 > li > .sector-node .sector-node-name'),
     ).map((item) => item.textContent?.trim());
 
-    expect(childNames).toEqual(['Construction materials', 'Furniture']);
+    expect(childNames).toEqual(['Electronics and Optics', 'Printing']);
   });
 
   it('makes only leaf sectors selectable', () => {
@@ -95,15 +95,15 @@ describe('SectorTreeSelector', () => {
     categoryButton(1).click();
     fixture.detectChanges();
 
-    expect(element.querySelector('#sector-checkbox-13')).toBeNull();
-    expect(categoryButton(13)).toBeTruthy();
-    expect(checkbox(19)).toBeTruthy();
+    expect(element.querySelector('#sector-checkbox-5')).toBeNull();
+    expect(categoryButton(5)).toBeTruthy();
+    expect(checkbox(18)).toBeTruthy();
 
-    categoryButton(13).click();
+    categoryButton(5).click();
     fixture.detectChanges();
 
-    expect(checkbox(385)).toBeTruthy();
-    expect(checkbox(392)).toBeTruthy();
+    expect(checkbox(148)).toBeTruthy();
+    expect(checkbox(150)).toBeTruthy();
   });
 
   it('expands a category by clicking the row itself', () => {
@@ -130,37 +130,22 @@ describe('SectorTreeSelector', () => {
   });
 
   it('expands the categories leading to already selected sectors', () => {
-    fixture.componentRef.setInput('selectedIds', [392]);
+    fixture.componentRef.setInput('selectedIds', [150]);
     fixture.detectChanges();
 
     expect(element.querySelector<HTMLUListElement>('#sector-children-1')?.hidden).toBe(false);
-    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(false);
-    expect(checkbox(392).checked).toBe(true);
-  });
-
-  it('does not re-expand a category the user collapsed after a later change', () => {
-    fixture.componentRef.setInput('selectedIds', [392]);
-    fixture.detectChanges();
-
-    categoryButton(13).click();
-    fixture.detectChanges();
-    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
-
-    // A change elsewhere must not undo the collapse.
-    fixture.componentRef.setInput('selectedIds', [392, 19]);
-    fixture.detectChanges();
-
-    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
+    expect(element.querySelector<HTMLUListElement>('#sector-children-5')?.hidden).toBe(false);
+    expect(checkbox(150).checked).toBe(true);
   });
 
   it('filters case-insensitively by full path and renders categories as static rows', () => {
-    filter('MANUFACTURING › FURNITURE › BEDROOM');
+    filter('MANUFACTURING › PRINTING › ADVERTISING');
 
     // Two categories are revealed on the way, but neither is a countable result.
     expect(element.textContent).toContain('1 sector found.');
     expect(element.querySelectorAll('.sector-checkbox').length).toBe(1);
-    expect(checkbox(385)).toBeTruthy();
-    expect(element.textContent).not.toContain('Office');
+    expect(checkbox(148)).toBeTruthy();
+    expect(element.textContent).not.toContain('Book/Periodicals printing');
     // Everything is forced open while filtering, so there is nothing to toggle.
     expect(element.querySelector('button[aria-controls="sector-children-1"]')).toBeNull();
     expect(element.querySelectorAll('.sector-category .sector-chevron-open').length).toBe(2);
@@ -174,12 +159,12 @@ describe('SectorTreeSelector', () => {
   });
 
   it('shows the complete subtree when a category matches', () => {
-    filter('furniture');
+    filter('printing');
 
     expect(element.textContent).toContain('2 sectors found.');
-    expect(element.textContent).toContain('Furniture');
-    expect(element.textContent).toContain('Bedroom');
-    expect(element.textContent).toContain('Office');
+    expect(element.textContent).toContain('Printing');
+    expect(element.textContent).toContain('Advertising');
+    expect(element.textContent).toContain('Book/Periodicals printing');
   });
 
   it('reports a polite count and clear no-results state', () => {
@@ -198,16 +183,16 @@ describe('SectorTreeSelector', () => {
   it('keeps selections independent across the hierarchy', () => {
     const selections = emitted();
 
-    fixture.componentRef.setInput('selectedIds', [385]);
+    fixture.componentRef.setInput('selectedIds', [148]);
     fixture.detectChanges();
-    checkbox(392).click();
+    checkbox(150).click();
 
-    expect(selections.at(-1)).toEqual([385, 392]);
-    expect(checkbox(385).checked).toBe(true);
+    expect(selections.at(-1)).toEqual([148, 150]);
+    expect(checkbox(148).checked).toBe(true);
   });
 
   it('shows selections as pills in selection order, with the immediate parent', () => {
-    fixture.componentRef.setInput('selectedIds', [392, 19, 392]);
+    fixture.componentRef.setInput('selectedIds', [150, 18, 150]);
     fixture.detectChanges();
 
     expect(element.querySelector('details')).toBeNull();
@@ -223,8 +208,8 @@ describe('SectorTreeSelector', () => {
       pill.querySelector('.selected-sector-name')?.textContent?.trim(),
     );
 
-    expect(parents).toEqual(['Furniture ›', 'Manufacturing ›']);
-    expect(names).toEqual(['Office', 'Construction materials']);
+    expect(parents).toEqual(['Printing ›', 'Manufacturing ›']);
+    expect(names).toEqual(['Book/Periodicals printing', 'Electronics and Optics']);
     // Below the cap there is nothing to collapse behind a toggle.
     expect(element.querySelector('.selected-sector-toggle')).toBeNull();
   });
@@ -232,16 +217,16 @@ describe('SectorTreeSelector', () => {
   it('removes a single pill by its full path and clears them all', () => {
     const selections = emitted();
 
-    fixture.componentRef.setInput('selectedIds', [19, 392]);
+    fixture.componentRef.setInput('selectedIds', [18, 150]);
     fixture.detectChanges();
 
     element
       .querySelector<HTMLButtonElement>(
-        'button[aria-label="Remove Manufacturing › Furniture › Office"]',
+        'button[aria-label="Remove Manufacturing › Printing › Book/Periodicals printing"]',
       )
       ?.click();
 
-    expect(selections.at(-1)).toEqual([19]);
+    expect(selections.at(-1)).toEqual([18]);
 
     element.querySelector<HTMLButtonElement>('.selected-sectors-header button')?.click();
 
@@ -251,17 +236,19 @@ describe('SectorTreeSelector', () => {
   it('caps the pills at four and expands them on request', () => {
     const manyLeaves: Sector[] = [
       { id: 1, parent_id: null, name: 'Manufacturing' },
-      ...Array.from({ length: 6 }, (_, index) => ({
-        id: 100 + index,
-        parent_id: 1,
-        name: `Sector ${index}`,
-      })),
+      { id: 13, parent_id: 1, name: 'Furniture' },
+      { id: 389, parent_id: 13, name: 'Bathroom/sauna' },
+      { id: 385, parent_id: 13, name: 'Bedroom' },
+      { id: 390, parent_id: 13, name: 'Children’s room' },
+      { id: 98, parent_id: 13, name: 'Kitchen' },
+      { id: 101, parent_id: 13, name: 'Living room' },
+      { id: 392, parent_id: 13, name: 'Office' },
     ];
 
     fixture.componentRef.setInput('sectors', manyLeaves);
     fixture.componentRef.setInput(
       'selectedIds',
-      manyLeaves.filter((sector) => sector.parent_id !== null).map((sector) => sector.id),
+      manyLeaves.filter((sector) => sector.parent_id === 13).map((sector) => sector.id),
     );
     fixture.detectChanges();
 
@@ -296,7 +283,7 @@ describe('SectorTreeSelector', () => {
   it('clears the filter from an explicit button, not only the native control', () => {
     expect(element.querySelector('.sector-filter-input button')).toBeNull();
 
-    filter('bedroom');
+    filter('advertising');
 
     const clearButton = element.querySelector<HTMLButtonElement>('.sector-filter-input button');
 
@@ -331,53 +318,15 @@ describe('SectorTreeSelector', () => {
     fixture.detectChanges();
 
     expect(element.querySelector<HTMLUListElement>('#sector-children-1')?.hidden).toBe(false);
-    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(false);
+    expect(element.querySelector<HTMLUListElement>('#sector-children-5')?.hidden).toBe(false);
     expect(toggle().textContent).toContain('Collapse all');
 
     toggle().click();
     fixture.detectChanges();
 
     expect(element.querySelector<HTMLUListElement>('#sector-children-1')?.hidden).toBe(true);
-    expect(element.querySelector<HTMLUListElement>('#sector-children-13')?.hidden).toBe(true);
+    expect(element.querySelector<HTMLUListElement>('#sector-children-5')?.hidden).toBe(true);
     expect(toggle().textContent).toContain('Expand all');
-  });
-
-  // Removing a pill only moves focus once the pill is actually gone, which
-  // needs the emitted selection fed back in the way the parent form does it.
-  describe('focus after removing a selection', () => {
-    beforeEach(() => {
-      fixture.componentInstance.selectedIdsChange.subscribe((ids) =>
-        fixture.componentRef.setInput('selectedIds', ids),
-      );
-    });
-
-    it('keeps focus in the pill list when a pill remains', async () => {
-      fixture.componentRef.setInput('selectedIds', [19, 385, 392]);
-      fixture.detectChanges();
-
-      const removeButtons = () =>
-        Array.from(element.querySelectorAll<HTMLButtonElement>('.selected-sector-remove'));
-
-      removeButtons()[1].click();
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      // The button at that position is gone, so its replacement takes focus.
-      expect(removeButtons().length).toBe(2);
-      expect(document.activeElement).toBe(removeButtons()[1]);
-    });
-
-    it('returns focus to the filter when the last pill goes', async () => {
-      fixture.componentRef.setInput('selectedIds', [19]);
-      fixture.detectChanges();
-
-      element.querySelector<HTMLButtonElement>('.selected-sector-remove')?.click();
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(element.querySelector('.selected-sector-remove')).toBeNull();
-      expect(document.activeElement).toBe(element.querySelector('#sector-filter'));
-    });
   });
 
   it('announces an empty selection state', () => {
@@ -389,7 +338,7 @@ describe('SectorTreeSelector', () => {
     expect(label?.textContent).not.toContain('0 sectors');
     expect(element.querySelector('.selected-sector-pill')).toBeNull();
 
-    fixture.componentRef.setInput('selectedIds', [19]);
+    fixture.componentRef.setInput('selectedIds', [18]);
     fixture.detectChanges();
 
     expect(label?.textContent).toContain('1 sector selected');
@@ -415,12 +364,12 @@ describe('SectorTreeSelector', () => {
     categoryButton(1).click();
     fixture.detectChanges();
 
-    const constructionCheckbox = checkbox(19);
-    const constructionLabel = element.querySelector<HTMLLabelElement>(
-      'label[for="sector-checkbox-19"]',
+    const electronicsCheckbox = checkbox(18);
+    const electronicsLabel = element.querySelector<HTMLLabelElement>(
+      'label[for="sector-checkbox-18"]',
     );
 
-    expect(constructionLabel).not.toBeNull();
-    expect(constructionCheckbox.labels?.item(0)).toBe(constructionLabel);
+    expect(electronicsLabel).not.toBeNull();
+    expect(electronicsCheckbox.labels?.item(0)).toBe(electronicsLabel);
   });
 });

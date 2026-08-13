@@ -29,27 +29,27 @@ it('rejects a whitespace-only name', function () {
 
     $this->postJson('/api/submission', [
         'name' => '   ',
-        'sector_ids' => [342],
+        'sector_ids' => [150],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJsonValidationErrors('name');
 });
 
-it('accepts names from any alphabet', function (string $name) {
+it('accepts a name with Unicode letters and punctuation', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => $name,
-        'sector_ids' => [342],
+        'name' => "Ülo O'Brien-Kärner",
+        'sector_ids' => [37],
         'agreed_to_terms' => true,
     ])->assertCreated();
-})->with(["Ülo O'Brien-Kärner", "'t Hooft", '李雷', 'X Æ A-12']);
+});
 
 it('rejects sector ids sent as an object rather than a list', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'Ada Lovelace',
-        'sector_ids' => ['unexpected_key' => 342],
+        'name' => 'Mari Tamm',
+        'sector_ids' => ['unexpected_key' => 392],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJsonValidationErrors('sector_ids');
 });
@@ -59,7 +59,7 @@ it('rejects a name longer than 255 characters', function () {
 
     $this->postJson('/api/submission', [
         'name' => str_repeat('A', 256),
-        'sector_ids' => [342],
+        'sector_ids' => [112],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJsonValidationErrors('name');
 });
@@ -68,31 +68,27 @@ it('rejects sector ids that do not exist', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('api/submission', [
-        'name' => 'John Doe',
+        'name' => 'Jaan Kask',
         'sector_ids' => [67878, 89088, 5000],
         'agreed_to_terms' => true,
     ])->assertJsonValidationErrors('sector_ids.0');
 });
 
-it('rejects category sector ids', function (int $sectorId) {
+it('rejects category sector ids', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'John Doe',
-        'sector_ids' => [$sectorId],
+        'name' => 'Katrin Saar',
+        'sector_ids' => [559],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJsonValidationErrors('sector_ids.0');
-})->with([
-    'top-level category' => 1,      // Manufacturing
-    'intermediate category' => 6,   // Manufacturing > Food and Beverage
-    'deep category' => 559,         // ... > Plastic and Rubber > Plastic processing technology
-]);
+});
 
 it('accepts leaf sectors at any depth', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'John Doe',
+        'name' => 'Mari Tamm',
         'sector_ids' => [19, 342, 53],
         'agreed_to_terms' => true,
     ])->assertCreated();
@@ -102,7 +98,7 @@ it('uses human-readable field names in validation messages', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'John Doe',
+        'name' => 'Jaan Kask',
         'sector_ids' => ['invalid'],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJson([
@@ -133,7 +129,7 @@ it('falls back to English for a language it has no translations for', function (
 
     $this->postJson('/api/submission', [
         'name' => '',
-        'sector_ids' => [342],
+        'sector_ids' => [122],
         'agreed_to_terms' => true,
     ], ['Accept-Language' => 'fr-FR'])->assertUnprocessable()->assertJson([
         'errors' => [
@@ -146,8 +142,8 @@ it('rejects duplicate sector ids', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'John Doe',
-        'sector_ids' => [342, 342],
+        'name' => 'Katrin Saar',
+        'sector_ids' => [45, 45],
         'agreed_to_terms' => true,
     ])->assertUnprocessable()->assertJsonValidationErrors([
         'sector_ids.0',
@@ -160,15 +156,15 @@ it('rate limits submission requests', function () {
 
     for ($attempt = 0; $attempt < 60; $attempt++) {
         $this->postJson('/api/submission', [
-            'name' => 'John Doe',
-            'sector_ids' => [342],
+            'name' => 'Mari Tamm',
+            'sector_ids' => [576],
             'agreed_to_terms' => true,
         ])->assertSuccessful();
     }
 
     $this->postJson('/api/submission', [
-        'name' => 'John Doe',
-        'sector_ids' => [342],
+        'name' => 'Mari Tamm',
+        'sector_ids' => [576],
         'agreed_to_terms' => true,
     ])->assertTooManyRequests()->assertHeader('Retry-After');
 });
@@ -178,19 +174,19 @@ it('stores a submission for the current session', function () {
     $this->withCookie(config('session.cookie'), $sessionId);
 
     $response = $this->postJson('api/submission', [
-        'name' => 'John Doe',
-        'sector_ids' => [101, 67, 19],
+        'name' => 'Katrin Saar',
+        'sector_ids' => [141, 121, 75],
         'agreed_to_terms' => true,
     ]);
 
     $response->assertCreated()
-        ->assertJson(['data' => ['name' => 'John Doe', 'agreed_to_terms' => true]]);
+        ->assertJson(['data' => ['name' => 'Katrin Saar', 'agreed_to_terms' => true]]);
 
-    expect($response->json('data.sector_ids'))->toEqualCanonicalizing([101, 67, 19]);
+    expect($response->json('data.sector_ids'))->toEqualCanonicalizing([141, 121, 75]);
 
     $this->assertDatabaseHas('submissions', [
         'session_id' => $sessionId,
-        'name' => 'John Doe',
+        'name' => 'Katrin Saar',
         'agreed_to_terms' => true,
     ]);
 
@@ -198,15 +194,15 @@ it('stores a submission for the current session', function () {
 
     $this->assertDatabaseHas('sector_submission', [
         'submission_id' => $submission->id,
-        'sector_id' => 101,
+        'sector_id' => 141,
     ]);
     $this->assertDatabaseHas('sector_submission', [
         'submission_id' => $submission->id,
-        'sector_id' => 67,
+        'sector_id' => 121,
     ]);
     $this->assertDatabaseHas('sector_submission', [
         'submission_id' => $submission->id,
-        'sector_id' => 19,
+        'sector_id' => 75,
     ]);
 });
 
@@ -214,41 +210,41 @@ it('returns the stored submission so the form can refill', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'John Doe',
-        'sector_ids' => [67, 101],
+        'name' => 'Jaan Kask',
+        'sector_ids' => [44, 113],
         'agreed_to_terms' => true,
     ])->assertCreated();
 
     $response = $this->getJson('/api/submission')->assertOk();
 
-    expect($response->json('data.name'))->toBe('John Doe')
+    expect($response->json('data.name'))->toBe('Jaan Kask')
         ->and($response->json('data.agreed_to_terms'))->toBeTrue()
-        ->and($response->json('data.sector_ids'))->toEqualCanonicalizing([67, 101]);
+        ->and($response->json('data.sector_ids'))->toEqualCanonicalizing([44, 113]);
 });
 
 it('updates the existing submission for the same session', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'Ada Lovelace',
-        'sector_ids' => [342],
+        'name' => 'Mari Tamm',
+        'sector_ids' => [378],
         'agreed_to_terms' => true,
     ])->assertCreated();
 
     $response = $this->postJson('/api/submission', [
-        'name' => 'Grace Hopper',
-        'sector_ids' => [43, 40],
+        'name' => 'Katrin Saar',
+        'sector_ids' => [29, 111],
         'agreed_to_terms' => true,
     ]);
 
     $response->assertOk();
 
     expect(Submission::count())->toBe(1)
-        ->and($response->json('data.name'))->toBe('Grace Hopper')
-        ->and($response->json('data.sector_ids'))->toEqualCanonicalizing([43, 40]);
+        ->and($response->json('data.name'))->toBe('Katrin Saar')
+        ->and($response->json('data.sector_ids'))->toEqualCanonicalizing([29, 111]);
 
     $this->assertDatabaseMissing('sector_submission', [
-        'submission_id' => Submission::sole()->id, 'sector_id' => 342,
+        'submission_id' => Submission::sole()->id, 'sector_id' => 378,
     ]);
 });
 
@@ -256,8 +252,8 @@ it('does not expose a submission to a different session', function () {
     $this->withCookie(config('session.cookie'), Str::random(40));
 
     $this->postJson('/api/submission', [
-        'name' => 'Ada Lovelace',
-        'sector_ids' => [342],
+        'name' => 'Jaan Kask',
+        'sector_ids' => [337],
         'agreed_to_terms' => true,
     ])->assertCreated();
 

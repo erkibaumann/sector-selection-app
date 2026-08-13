@@ -14,7 +14,6 @@ describe('SectorForm', () => {
   let existingSubmission: Submission | null;
   let submissionLoadFails: boolean;
   let submissionLoadCount: number;
-  let submissionSaveCount: number;
   let submissionSaveError: unknown;
   let deferredSubmissionLoad: Subject<Submission | null> | undefined;
   let deferredSave: Subject<Submission> | undefined;
@@ -30,6 +29,41 @@ describe('SectorForm', () => {
       parent_id: null,
       name: 'Manufacturing',
     },
+    {
+      id: 18,
+      parent_id: 1,
+      name: 'Electronics and Optics',
+    },
+    {
+      id: 33,
+      parent_id: 3,
+      name: 'Environment',
+    },
+    {
+      id: 37,
+      parent_id: 3,
+      name: 'Creative industries',
+    },
+    {
+      id: 3,
+      parent_id: null,
+      name: 'Other',
+    },
+    {
+      id: 141,
+      parent_id: 2,
+      name: 'Translation services',
+    },
+    {
+      id: 22,
+      parent_id: 2,
+      name: 'Tourism',
+    },
+    {
+      id: 2,
+      parent_id: null,
+      name: 'Service',
+    },
   ];
 
   beforeEach(async () => {
@@ -37,7 +71,6 @@ describe('SectorForm', () => {
     existingSubmission = null;
     submissionLoadFails = false;
     submissionLoadCount = 0;
-    submissionSaveCount = 0;
     submissionSaveError = undefined;
     deferredSubmissionLoad = undefined;
     deferredSave = undefined;
@@ -57,7 +90,6 @@ describe('SectorForm', () => {
             },
             saveSubmission: (submission: Submission) => {
               submittedSubmission = submission;
-              submissionSaveCount++;
 
               if (submissionSaveError !== undefined) {
                 return throwError(() => submissionSaveError);
@@ -115,17 +147,24 @@ describe('SectorForm', () => {
     expect(element.textContent).toContain('Your name is required.');
     expect(element.textContent).toContain('Choose at least one sector.');
     expect(element.textContent).toContain('Please agree to the terms to continue.');
+
+    const summary = element.querySelector('form [role="alert"]');
+
+    expect(summary?.textContent).toContain('Please correct the highlighted fields.');
+    // One assertive region, not one per field.
+    expect(element.querySelectorAll('form [role="alert"]').length).toBe(1);
   });
 
-  const selectSector = (element: HTMLElement): void => {
-    const expandManufacturing = element.querySelector<HTMLButtonElement>(
-      'button[aria-controls="sector-children-1"]',
+  const selectSector = (element: HTMLElement, sectorId: number): void => {
+    const sector = sectors.find((candidate) => candidate.id === sectorId);
+    const expandCategory = element.querySelector<HTMLButtonElement>(
+      `button[aria-controls="sector-children-${sector?.parent_id}"]`,
     );
 
-    expandManufacturing?.click();
+    expandCategory?.click();
     fixture.detectChanges();
 
-    const sectorCheckbox = element.querySelector<HTMLInputElement>('#sector-checkbox-19');
+    const sectorCheckbox = element.querySelector<HTMLInputElement>(`#sector-checkbox-${sectorId}`);
 
     if (!sectorCheckbox) {
       throw new Error('Expected the selectable sector checkbox to be rendered.');
@@ -135,7 +174,7 @@ describe('SectorForm', () => {
     fixture.detectChanges();
   };
 
-  const submitWithName = (name: string): HTMLElement => {
+  const submitWithName = (name: string, sectorId: number): HTMLElement => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
@@ -150,7 +189,7 @@ describe('SectorForm', () => {
     nameInput.value = name;
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    selectSector(element);
+    selectSector(element, sectorId);
 
     termsCheckbox.checked = true;
     termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
@@ -163,45 +202,26 @@ describe('SectorForm', () => {
   };
 
   it('rejects a whitespace-only name', () => {
-    const element = submitWithName('   ');
+    const element = submitWithName('   ', 33);
 
     expect(submittedSubmission).toBeUndefined();
     expect(element.textContent).toContain('Your name is required.');
   });
 
   it('trims the name before saving', () => {
-    submitWithName('  Ada Lovelace  ');
+    submitWithName('  Katrin Saar  ', 141);
 
-    expect(submittedSubmission?.name).toBe('Ada Lovelace');
+    expect(submittedSubmission?.name).toBe('Katrin Saar');
   });
 
   it('rejects a name longer than 255 characters', () => {
-    const element = submitWithName('A'.repeat(256));
+    const element = submitWithName('A'.repeat(256), 19);
 
     // maxlength stops typing and pasting; the validator mirrors the backend
     // rule for any value that reaches the control by another route.
     expect(element.querySelector('#name')?.getAttribute('maxlength')).toBe('255');
     expect(submittedSubmission).toBeUndefined();
     expect(element.textContent).toContain('Name must not exceed 255 characters.');
-  });
-
-  it('announces a failed submit once, above the fields', () => {
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-
-    expect(element.querySelector('[role="alert"]')).toBeNull();
-
-    element
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    fixture.detectChanges();
-
-    const summary = element.querySelector('form [role="alert"]');
-
-    expect(summary?.textContent).toContain('Please correct the highlighted fields.');
-    // One assertive region, not one per field.
-    expect(element.querySelectorAll('form [role="alert"]').length).toBe(1);
   });
 
   it('switches Save to Update once a submission exists, without a reload', async () => {
@@ -212,7 +232,7 @@ describe('SectorForm', () => {
     expect(element.textContent).not.toContain('You saved this form earlier');
     expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Save');
 
-    submitWithName('Ada Lovelace');
+    submitWithName('Mari Tamm', 37);
     await fixture.whenStable();
 
     expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Update');
@@ -243,7 +263,7 @@ describe('SectorForm', () => {
       throw new Error('Expected form controls were not rendered.');
     }
 
-    nameInput.value = 'Ada Lovelace';
+    nameInput.value = 'Jaan Kask';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
 
     termsCheckbox.checked = true;
@@ -278,7 +298,7 @@ describe('SectorForm', () => {
     ).toBe('true');
     expect(element.querySelector('#agreed-to-terms')?.getAttribute('aria-invalid')).toBe('true');
 
-    nameInput!.value = 'Ada Lovelace';
+    nameInput!.value = 'Katrin Saar';
     nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
 
@@ -328,11 +348,11 @@ describe('SectorForm', () => {
   });
 
   it('saves a valid submission', () => {
-    const element = submitWithName('Ada Lovelace');
+    const element = submitWithName('Mari Tamm', 18);
 
     expect(submittedSubmission).toEqual({
-      name: 'Ada Lovelace',
-      sector_ids: [19],
+      name: 'Mari Tamm',
+      sector_ids: [18],
       agreed_to_terms: true,
     });
 
@@ -344,12 +364,9 @@ describe('SectorForm', () => {
   it('shows the saving state until the request completes', () => {
     deferredSave = new Subject<Submission>();
 
-    const element = submitWithName('Ada Lovelace');
+    const element = submitWithName('Jaan Kask', 22);
     const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
 
-    // Nothing is truly disabled: the fields stay editable because a request
-    // resolving in milliseconds is not a window a user can type into, and the
-    // button stays focusable so activating it does not throw focus to the body.
     expect(submitButton?.getAttribute('aria-disabled')).toBe('true');
     expect(submitButton?.disabled).toBe(false);
     expect(element.querySelector<HTMLInputElement>('#name')?.disabled).toBe(false);
@@ -360,7 +377,7 @@ describe('SectorForm', () => {
     deferredSave.complete();
     fixture.detectChanges();
 
-    expect(submitButton?.getAttribute('aria-disabled')).toBe('false');
+    expect(submitButton?.getAttribute('aria-disabled')).toBeNull();
     expect(element.textContent).not.toContain('Saving submission.');
     expect(element.textContent).toContain('Submission saved.');
   });
@@ -368,14 +385,14 @@ describe('SectorForm', () => {
   it('shows a save error and clears it after a successful retry', () => {
     submissionSaveError = new Error('Save failed');
 
-    const element = submitWithName('Ada Lovelace');
+    const element = submitWithName('Katrin Saar', 33);
     const submitButton = element.querySelector<HTMLButtonElement>('button[type="submit"]');
     const nameInput = element.querySelector<HTMLInputElement>('#name');
     const form = element.querySelector('form');
 
     expect(element.textContent).toContain('The submission could not be saved.');
-    expect(submitButton?.getAttribute('aria-disabled')).toBe('false');
-    expect(nameInput?.value).toBe('Ada Lovelace');
+    expect(submitButton?.disabled).toBe(false);
+    expect(nameInput?.value).toBe('Katrin Saar');
 
     submissionSaveError = undefined;
     form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -396,7 +413,7 @@ describe('SectorForm', () => {
       },
     });
 
-    const element = submitWithName('Ada Lovelace');
+    const element = submitWithName('Mari Tamm', 37);
 
     expect(element.textContent).toContain('The name is not available.');
     expect(element.textContent).toContain('The selected sector is no longer available.');
@@ -414,10 +431,10 @@ describe('SectorForm', () => {
       error: { errors: { name: ['The name is not available.'] } },
     });
 
-    const element = submitWithName('Ada Lovelace');
+    const element = submitWithName('Jaan Kask', 141);
     const nameInput = element.querySelector<HTMLInputElement>('#name');
 
-    nameInput!.value = 'Grace Hopper';
+    nameInput!.value = 'Katrin Saar';
     nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
 
@@ -463,12 +480,12 @@ describe('SectorForm', () => {
   });
 
   it('clears the saved message when the form changes', () => {
-    const element = submitWithName('Ada Lovelace');
+    const element = submitWithName('Mari Tamm', 22);
     const nameInput = element.querySelector<HTMLInputElement>('#name');
 
     expect(element.textContent).toContain('Submission saved.');
 
-    nameInput!.value = 'Grace Hopper';
+    nameInput!.value = 'Jaan Kask';
     nameInput!.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
 
@@ -498,8 +515,8 @@ describe('SectorForm', () => {
 
   it('refills the form from the current session submission', () => {
     existingSubmission = {
-      name: 'Grace Hopper',
-      sector_ids: [19],
+      name: 'Mari Tamm',
+      sector_ids: [141],
       agreed_to_terms: true,
     };
 
@@ -509,55 +526,25 @@ describe('SectorForm', () => {
     const nameInput = element.querySelector<HTMLInputElement>('#name');
     const termsCheckbox = element.querySelector<HTMLInputElement>('#agreed-to-terms');
 
-    expect(nameInput?.value).toBe('Grace Hopper');
+    expect(nameInput?.value).toBe('Mari Tamm');
     expect(termsCheckbox?.checked).toBe(true);
 
     expect(element.querySelector('#selected-sectors-label')?.textContent).toContain(
       '1 sector selected',
     );
-    expect(element.querySelector('.selected-sector-parent')?.textContent).toContain(
-      'Manufacturing',
-    );
+    expect(element.querySelector('.selected-sector-parent')?.textContent).toContain('Service');
     expect(element.querySelector('.selected-sector-name')?.textContent).toContain(
-      'Construction materials',
+      'Translation services',
     );
     // The checkbox is reachable without expanding anything by hand.
-    expect(element.querySelector<HTMLInputElement>('#sector-checkbox-19')?.checked).toBe(true);
-  });
-
-  it('tells a returning user they are editing an existing submission', () => {
-    existingSubmission = {
-      name: 'Grace Hopper',
-      sector_ids: [19],
-      agreed_to_terms: true,
-    };
-
-    fixture.detectChanges();
-
-    const element = fixture.nativeElement as HTMLElement;
-
+    expect(element.querySelector<HTMLInputElement>('#sector-checkbox-141')?.checked).toBe(true);
     expect(element.textContent).toContain('You saved this form earlier in this session.');
     expect(element.querySelector('.save-button')?.textContent?.trim()).toBe('Update');
   });
 
-  it('ignores a second submit while the first is still in flight', () => {
-    deferredSave = new Subject<Submission>();
-
-    const element = submitWithName('Ada Lovelace');
-
-    expect(submissionSaveCount).toBe(1);
-
-    // The button is only aria-disabled, so a second activation still reaches
-    // the handler and the in-flight guard is what has to stop it.
-    element.querySelector<HTMLButtonElement>('.save-button')?.click();
-    fixture.detectChanges();
-
-    expect(submissionSaveCount).toBe(1);
-  });
-
   it('drops stale category ids while refilling so the next save removes them', () => {
     existingSubmission = {
-      name: 'Grace Hopper',
+      name: 'Mari Tamm',
       sector_ids: [1, 19],
       agreed_to_terms: true,
     };

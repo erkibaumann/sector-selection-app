@@ -1,37 +1,54 @@
-# Sector Selection App
+# Sector Selection
 
-A small full-stack application for selecting one or more business sectors and saving the selection for the current browser session. The form is built with Angular, while Laravel provides the API, validation, persistence, and session handling.
+A small full-stack application for selecting business sectors. It stores one submission per browser
+session and lets the user edit that submission until the session ends.
+
+This repository is a technical assignment. It demonstrates an accessible Angular form backed by a
+Laravel API and PostgreSQL database.
+
+## At a glance
+
+- Angular renders the form, sector hierarchy, validation, and English or Estonian interface.
+- Laravel validates requests and stores each submission against its session ID.
+- PostgreSQL stores the 79 supplied sectors as a parent-child hierarchy.
+- Native HTML controls provide the core keyboard and screen-reader behaviour.
 
 ## Technology stack
 
 - Angular 22 with standalone components, signals, and reactive forms
-- Bootstrap 5 CSS, English and Estonian interface translations
+- Bootstrap 5 CSS
 - Laravel 13
 - PostgreSQL 18
 - Pest for backend tests
 - Vitest through Angular's test runner for frontend tests
 
-## Requirements
+## Prerequisites
 
-- PHP 8.3 or newer with the `pdo_pgsql` extension
-- Docker with Compose v2 for the PostgreSQL container, or an existing PostgreSQL server — see below
-- Composer 2
-- Node.js 24.15 or newer (also pinned in `.nvmrc` and `frontend/package.json`)
-- npm 11 (the exact package-manager version is pinned in `frontend/package.json`)
+- Docker with Compose for the included PostgreSQL database
+- PHP 8.4 or newer with the PostgreSQL PDO driver, and Composer
+- Node.js and npm; the tested Node.js version is recorded in `.nvmrc`
+
+Composer and npm install the exact application dependencies from their lock files. The setup
+commands stop with a direct error if Docker, the PHP database driver, or a compatible runtime is
+missing.
 
 ## Local setup
 
-Two terminals. Backend:
+Use two terminals.
+
+### 1. Start the backend
 
 ```bash
 cd backend
-docker compose up -d --wait   # starts PostgreSQL 18 and waits until it accepts the app's credentials
-composer setup                # installs dependencies, creates .env, migrates, seeds the 79 sectors
-composer dev                  # serves on http://127.0.0.1:8000
+docker compose up -d --wait
+composer setup
+composer dev
 ```
 
+These commands start PostgreSQL 18, install the PHP dependencies, create `backend/.env`, run the
+migrations, seed all 79 sectors, and serve the API at `http://127.0.0.1:8000`.
 
-Frontend, in a second terminal:
+### 2. Start the frontend
 
 ```bash
 cd frontend
@@ -39,24 +56,39 @@ npm ci
 npm start
 ```
 
+### 3. Open the application
+
 Open `http://localhost:4200`.
 
-To rebuild the local database later, `cd backend` and then `php artisan migrate:fresh --seed` — this deletes existing submissions.
+To rebuild the local database later, run this command from `backend/`:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+This command deletes all existing submissions.
 
 ### The database port
 
-The container publishes host port **15432**, set by `DB_PORT` in `backend/.env`. Both Laravel and `compose.yaml` read that one value, so changing it there changes both — run `docker compose up -d` again afterwards to republish.
+The PostgreSQL container publishes host port **15432**. The `DB_PORT` value in `backend/.env`
+controls this port for both Laravel and `compose.yaml`.
+
+After changing `DB_PORT`, run `docker compose up -d` again to publish the new port.
 
 ## Using the application
 
 1. Enter a name.
-2. Expand the categories or filter by a name or full category path, then check one or more leaf sectors. Sectors with children are navigation-only categories.
-3. Agree to the terms.
-4. Select **Save**.
+2. Expand the categories or filter by a sector name or full category path.
+3. Select one or more leaf sectors. Categories that contain sectors are navigation only.
+4. Agree to the terms.
+5. Select **Save**.
 
-The language selector at the top of the card switches the interface between English and Estonian at any point, including validation messages already on screen.
+The language selector switches the interface between English and Estonian. It also updates
+validation messages that are already visible.
 
-The first save creates a submission for the current Laravel session. Further saves update that same submission. Reloading the page during the session refills the form with the stored data; another browser session cannot access it.
+The first save creates a submission for the current Laravel session. Later saves update the same
+submission. Reloading the page restores the saved data while that session remains active. Another
+browser session cannot access it.
 
 ## Running checks
 
@@ -70,15 +102,19 @@ docker compose up -d --wait   # the Pest suite runs against PostgreSQL
 php artisan test --compact
 ```
 
-Tests use a separate `sector_selection_test` database on the same server, created automatically on the first run, so they never touch development data.
+Tests use a separate `sector_selection_test` database on the same PostgreSQL server. The test suite
+creates it automatically on the first run and never touches development data.
 
 ## Database dump
 
-The assignment asks for a full dump of structure and data. [`backend/database/dump.sql`](backend/database/dump.sql) is a `pg_dump` holding the schema and all 79 sectors.
+The assignment requires a complete database dump. The dump is in
+[`backend/database/dump.sql`](backend/database/dump.sql). It contains the schema and all 79 sectors.
 
-**Local setup does not need it** — `composer setup` already seeds the same sectors.
+Local setup does not use the dump. The `composer setup` command creates and seeds the database.
 
-It deliberately contains no `sessions` or `submissions` rows — those are per-visitor runtime data, and session IDs are the credential that identifies a visitor. Loading it gives the same starting state as `php artisan migrate:fresh --seed`. Regenerate it after a schema change with:
+The dump deliberately excludes `sessions` and `submissions`. These tables contain per-visitor
+runtime data, and a session ID identifies its visitor. Loading the dump therefore creates the same
+starting state as `php artisan migrate:fresh --seed`.
 
 ## API
 
@@ -98,71 +134,120 @@ The submission request body has this shape:
 }
 ```
 
-Laravel requires a name of at most 255 characters, at least one distinct existing leaf-sector ID, and acceptance of the terms. Invalid requests receive a `422 Unprocessable Content` response with validation errors.
+Laravel requires:
+
+- a name with no more than 255 characters;
+- at least one distinct ID for an existing leaf sector; and
+- acceptance of the terms.
+
+Invalid requests receive a `422 Unprocessable Content` response with validation errors.
 
 ## Design decisions
 
 ### Sectors
 
-- **Hierarchy via a self-referencing `parent_id`,** not indentation baked into names. The supplied option IDs stay as primary keys, and Angular derives the nesting and breadcrumb paths, so no presentation detail lives in the database.
-- **Siblings sort alphabetically at each level.** This reproduces the supplied ordering exactly, so no `sort_order` column is needed. The sort that users see is the client's `localeCompare`, not the database's `ORDER BY`, because text ordering is a property of the cluster's collation: byte ordering, glibc, and ICU each place `CNC-machining` and `MIG, TIG, Aluminum welding` differently. No sibling group changes order under any of them, so the tree renders identically either way — but asserting a specific order in a backend test would only describe whichever cluster ran it.
-- **Only leaf sectors are selectable.** Sectors with children are navigation-only headings. Selections stay independent — no cascade, no tri-state. Laravel enforces the same rule, and the form drops any stored category ID when refilling.
-- **Native controls rather than a UI library.** The selector is checkboxes, buttons, nested lists, and a scroll area. A native `<select multiple>` needs undiscoverable Ctrl-click and behaves poorly on mobile; a third-party tree would add a second design system and an emulated ARIA tree in place of controls browsers already handle correctly.
+**The hierarchy uses `parent_id`.** Each sector can refer to another sector as its parent. The
+supplied option IDs remain the primary keys. Angular uses these relationships to build the nested
+list and full category paths. The database does not store visual indentation.
+
+**Angular sorts siblings alphabetically.** This produces the supplied order without a `sort_order`
+column. Sorting in the client also avoids differences between database collations.
+
+**Only leaf sectors are selectable.** A sector with children is a navigation heading. Selections do
+not cascade, and there is no tri-state selection. Laravel rejects category IDs. Angular also drops
+any stored category ID when it refills the form.
+
+**The selector uses native controls.** Checkboxes, buttons, and nested lists provide accessible
+keyboard and touch interaction without a third-party component.
 
 ### Backend
 
-- **PostgreSQL rather than SQLite.** The assignment left the backend free. SQLite is fewer moving parts, but it serialises writes and has no real type or collation system, so it answers questions differently from anything this would deploy on. A Compose service pins the version and keeps setup to one extra command, and the Pest suite runs against that same engine rather than an in-memory substitute. The benefit was not theoretical: the move surfaced a latent schema bug. `create_sectors_table` declared its primary key as a fluent `->primary()` modifier, which Laravel registers *after* the foreign key that `constrained()` adds inline, so PostgreSQL rejected a self-reference to a column that was not yet unique. SQLite had never complained, because its grammar inlines the primary key into `CREATE TABLE`.
-- **Session identity, no authentication.** "The user's own data during the session" is the session cookie. `updateOrCreate` keyed on the session ID keeps at most one submission per session, so a single `POST /api/submission` covers both create and edit.
-- **Many-to-many through `sector_submission`.** Keeps the data normalised and lets a submission hold any number of sectors.
-- **API routes prepend the `web` middleware group** — `$middleware->api(prepend: 'web')`. Sanctum's `statefulApi()` was used first, but it applies session middleware *conditionally*, only when `Origin` or `Referer` matches a configured domain; any other caller reached `$request->session()` with no session and got a `500` instead of a `419`. Prepending makes the dependency unconditional and declared. Sanctum then had no role left — no tokens, no guards, no auth — so it was removed.
-- **Trimmed framework defaults.** With no auth, the `users` and `password_reset_tokens` tables, the `User` model, and `config/auth.php` are gone, and the framework migration was reduced to the `sessions` table alone. The cache and queue migrations were dropped in favour of the file cache and synchronous queue.
+**PostgreSQL is used throughout.** Development and tests use the same database engine, while
+Compose makes its version and setup reproducible.
+
+**The session cookie identifies the submission.** An `updateOrCreate` operation keyed by session ID
+keeps one submission per session, so the same endpoint handles the first save and later edits.
+
+**Submissions and sectors have a many-to-many relationship.** The `sector_submission` table keeps
+the data normalised and allows each submission to contain multiple sectors.
+
+**Every API route starts the Laravel session.** The API prepends Laravel's `web` middleware so the
+session cookie is always available. Authentication middleware is unnecessary because the
+assignment has no accounts.
+
+**Unused framework defaults were removed.** Authentication, cache, and queue database structures
+are unnecessary for this application's scope.
 
 ### Frontend
 
-- **Reactive forms and signals.** The parent owns the `FormControl`, server errors, and save lifecycle; the standalone tree selector takes sectors and selected IDs as inputs and emits ordered ID arrays. A typed API service keeps HTTP out of the components.
-- **Bootstrap as CSS only.** Responsive layout, form, and validation styling without pulling in JavaScript components or a second design system.
-- **Accessibility is built on native semantics.** Labels are associated and hints and errors are wired through `aria-describedby`. Where a native element already carries the meaning, it is used instead of the ARIA attribute that would declare it: `fieldset`/`legend` groups the sectors rather than `role="group"` with `aria-labelledby`, `<output>` carries the save and loading status rather than `role="status"`, and the selector is semantic nested lists rather than an emulated ARIA tree. A failed submit moves focus to the first invalid control.
-- **Nothing is disabled while saving.** The save button is marked `aria-disabled`, and a guard in the submit handler is what actually blocks a second request. Setting `disabled` on the element the user has just activated moves focus to `<body>`, costing a keyboard user their place — a real, lasting change traded against a window too short to click twice in. The fields stay editable for the same reason: a request that resolves in milliseconds is not something a user can type into.
+**Reactive forms manage form state and validation.** The sector selector receives values and emits
+changes, while a typed API service keeps HTTP logic out of the components.
+
+**Bootstrap provides CSS only** for responsive layout and form styling; no component library is
+needed.
+
+**Accessibility starts with native HTML.** Labels, `fieldset`, `legend`, `output`, and nested lists
+provide the form's semantics. Hints and errors are connected to their controls, and a failed submit
+moves focus to the first invalid field.
+
+**The Save button remains focusable while saving.** It uses `aria-disabled` to communicate its
+state, while the submit handler prevents duplicate requests. The status output announces progress
+without moving keyboard focus.
 
 ### Language
 
-- **One dictionary per language, read through a signal.** `frontend/src/app/i18n/translations.ts` holds the `en` and `et` objects; switching re-renders every string at once. That includes validation messages already on screen, because the error table names a dictionary key rather than holding a sentence.
-- **A missing translation is a build error.** The Estonian dictionary is typed as `typeof en`, so an omitted or misspelled key fails `npm run build` rather than rendering blank at runtime.
-- **Counts are interpolated by small functions, not an ICU message format.** Estonian takes the partitive singular after a number — "1 sektor" but "3 sektorit" — so the distinction is real, but two languages do not justify a message-format parser.
-- **Localisation crosses the network boundary.** An interceptor sends the chosen language as `Accept-Language`, since the browser's own header describes the browser rather than the switcher, and `SetLocale` maps it to a Laravel locale. A `422` therefore arrives in the language the page is showing.
-- **`lang/` holds overrides only.** Laravel registers its own translations as a second lang path and merges the application's file over them, so `lang/en/validation.php` contains just the four field names this application invents rather than a copy of the framework's catalogue. `lang/et/validation.php` covers the ten rules actually in use; anything else resolves through `fallback_locale`.
-- **Sector names stay in English,** including in the Estonian filter placeholder, because they come from the database. Translating them is a schema change, not a dictionary key.
+**A signal selects a typed English or Estonian dictionary.** Switching it updates all interface
+copy, including visible client-side errors. The two small dictionaries share one file; a larger
+application would separate them by locale.
+
+**Small functions handle the count messages.** They cover the English and Estonian forms without
+adding a message-format library.
+
+**The selected language also controls server validation.** Requests send `Accept-Language`, and
+Laravel returns validation messages in the chosen language.
+
+**Sector names remain in English.** They come from the supplied database data. Translated names
+would require locale-specific records in the database.
 
 ### Scope
 
-- **Same-origin deployment.** Session and CSRF cookies are the entire identity mechanism, so both applications are expected under one public origin, with the web server routing `/api/*` to Laravel. Cross-origin access is not a supported deployment model.
-- **Production hardening is deliberately partial.** Rate limiting is enabled (60 requests per minute per IP, via the file cache) and sessions expire after 120 idle minutes with Laravel's cleanup lottery. What is missing, and why, is listed under [What I would do differently for a real product](#what-i-would-do-differently-for-a-real-product).
+**Deployment is same-origin.** Keeping the frontend and API on one origin lets Laravel's session
+and Cross-Site Request Forgery (CSRF) cookies work without cross-origin configuration.
+
+**Production hardening is intentionally limited.** Basic request throttling and session expiry are
+included. Broader operational work is left out to keep this technical assignment proportionate.
 
 ## What I would do differently for a real product
 
-This is a demonstration, so some concerns are shown rather than built out. Each omission below was a decision, and this is what reversing it would take.
+This assignment demonstrates the main concerns without building a complete production system. The
+following work would depend on the product's scale and requirements.
 
 ### Would build
 
-- **End-to-end tests.** Both sides are covered separately, but nothing drives a real browser against a real Laravel session. Playwright against the production build and a seeded database would cover the save, reload, and edit cycle — the one path that actually depends on both halves agreeing.
-- **A CI pipeline.** Pint, Pest, Vitest, and the production build on every push, with the bundle budget failing the build rather than printing a warning nobody reads.
-- **Error monitoring.** Failures currently collapse into a "please try again" message, which is right for the user and useless for the developer. Sentry or equivalent on both sides.
-- **Scheduled session pruning.** Sessions are database-backed and expire after 120 idle minutes, but rely on Laravel's cleanup lottery. A scheduled `session:prune`, and Redis rather than the database, would suit a real deployment.
+- **End-to-end tests** for the complete browser, API, and session flow.
+- **Automated checks** that run formatting, tests, and the production build for every change.
+- **Error monitoring** so developers can diagnose failures hidden behind user-friendly messages.
 
 ### Would build differently
 
-- **The sector selector as a `ControlValueAccessor`,** so `formControlName="sector_ids"` replaces the manual value and change wiring. The interface costs more boilerplate than the parent wiring it removes, which is not worth paying for a single consumer.
-- **Namespaced element IDs in the selector.** `sector-filter` and its siblings are fixed strings, so two instances on one page would collide. A generated per-instance prefix is the fix, and it buys nothing while exactly one instance exists.
-- **A more forgiving filter.** It matches a lowercased substring of the full path, so "manufacturing wood" does not find "Manufacturing › Wood". Folding diacritics and matching terms in any order would fix that; all 79 sector names are ASCII English, so neither earns its complexity yet.
-- **Build-time translation.** Angular's `$localize` extracts messages and emits one bundle per locale, so a user downloads only their own language. It also means a build artefact per locale and an extraction step in CI — disproportionate for two languages and one form, and the dictionaries would move to a translation-management service anyway once non-developers own the copy.
-- **Translated sector names,** via a table keyed by sector and locale, joined at read time.
+- **Form integration.** A reusable sector selector could implement `ControlValueAccessor`; the
+  current input/output wiring is simpler for one use.
+- **Element IDs.** Multiple selectors on one page would need unique ID prefixes.
+- **Filtering.** A larger dataset would benefit from term matching and accent handling.
+- **Translation workflow.** More languages would justify separate locale files and tooling for
+  translators.
+- **Sector translations.** Locale-specific database records could let the API return translated
+  names from the request language.
 
 ### Would need a product decision first
 
-- **Accounts.** "The user's own data during the session" is the assignment's boundary, and the session cookie is the whole identity mechanism. Real ownership means authentication, and the session cookie stops being sufficient the moment a user expects their data on a second device.
-- **Analytics and cookie consent.** Nothing tracks the user, which is precisely why there is no consent banner. Adding either forces the other.
-- **Remembering the language,** in `localStorage` or a cookie, and negotiating the first-visit language from the browser instead of defaulting to English.
-- **Retranslating server validation messages.** A `422` arrives in the language it was requested in, so a message already on screen keeps that language if the user switches afterwards. Returning message keys instead of sentences would fix it, at the cost of duplicating Laravel's catalogue in the client — the wrong trade for a state reachable only when client validation passes and the server still rejects.
+- **Accounts.** Cross-device access would require authentication instead of session-only identity.
+- **Analytics and consent.** Tracking should be added only with an agreed purpose and consent
+  policy.
+- **Remembered language.** Local storage, a cookie, or a language code in the URL could preserve
+  the choice after a refresh.
+- **Server error translation.** Returning error keys would let visible server errors follow a
+  language change, but would duplicate the validation catalogue in the frontend.
 
 ## Project structure
 

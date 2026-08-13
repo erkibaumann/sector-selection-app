@@ -9,16 +9,10 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        /*
-         * The API identifies a visitor by the session cookie, so it runs the
-         * full "web" stack (cookies, session, CSRF). Declaring it here means
-         * every caller gets a session, rather than only those whose Origin or
-         * Referer header happens to match a configured stateful domain.
-        */
+        // Every API request needs the session cookie that identifies its submission.
         $middleware->api(prepend: 'web');
         $middleware->api(append: SetLocale::class);
         $middleware->throttleApi();

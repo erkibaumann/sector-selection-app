@@ -1,18 +1,15 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
-  afterNextRender,
   Component,
   computed,
   effect,
   ElementRef,
   inject,
-  Injector,
   input,
   output,
   signal,
   untracked,
   viewChild,
-  viewChildren,
 } from '@angular/core';
 
 import { Translations } from '../../i18n/translations';
@@ -53,11 +50,8 @@ export class SectorTreeSelector {
   protected readonly pathSeparator = PATH_SEPARATOR;
   protected readonly t = inject(Translations).t;
 
-  private readonly injector = inject(Injector);
   private readonly filterInput = viewChild<ElementRef<HTMLInputElement>>('filterInput');
-  private readonly removeButtons = viewChildren<ElementRef<HTMLButtonElement>>('removeButton');
   private readonly expandedIds = signal<ReadonlySet<number>>(new Set());
-  private readonly revealedIds = new Set<number>();
 
   protected readonly filterText = signal('');
   protected readonly normalizedFilter = computed(() =>
@@ -208,34 +202,15 @@ export class SectorTreeSelector {
   }
 
   protected removeSelection(id: number): void {
-    const removedIndex = this.visibleSelectedNodes().findIndex((node) => node.id === id);
     const selectedIds = new Set(this.selectedIds());
 
     selectedIds.delete(id);
     this.selectedIdsChange.emit([...selectedIds]);
-
-    // The button that had focus is gone; land on the pill that took its place.
-    this.afterRender(() => {
-      const removeButtons = this.removeButtons();
-
-      if (removeButtons.length === 0) {
-        this.focus();
-
-        return;
-      }
-
-      removeButtons[Math.min(removedIndex, removeButtons.length - 1)]?.nativeElement.focus();
-    });
   }
 
   protected clearSelection(): void {
     this.showAllSelected.set(false);
     this.selectedIdsChange.emit([]);
-    this.afterRender(() => this.focus());
-  }
-
-  private afterRender(callback: () => void): void {
-    afterNextRender(callback, { injector: this.injector });
   }
 
   protected toggleExpandAll(): void {
@@ -250,29 +225,16 @@ export class SectorTreeSelector {
     return `sector-children-${id}`;
   }
 
-  /**
-   * Reveals each selection once. Re-expanding on every change would fight a
-   * user who deliberately collapsed a category holding a selected sector.
-   */
   private expandAncestors(selectedNodes: readonly SectorTreeNode[]): void {
     const expandedIds = new Set(this.expandedIds());
-    const initialSize = expandedIds.size;
 
     for (const node of selectedNodes) {
-      if (this.revealedIds.has(node.id)) {
-        continue;
-      }
-
-      this.revealedIds.add(node.id);
-
       for (let ancestor = node.parent; ancestor !== null; ancestor = ancestor.parent) {
         expandedIds.add(ancestor.id);
       }
     }
 
-    if (expandedIds.size !== initialSize) {
-      this.expandedIds.set(expandedIds);
-    }
+    this.expandedIds.set(expandedIds);
   }
 
   private buildTree(sectors: readonly Sector[]): SectorTree {

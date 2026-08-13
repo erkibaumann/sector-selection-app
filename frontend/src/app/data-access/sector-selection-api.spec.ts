@@ -26,14 +26,14 @@ describe('SectorSelectionApi', () => {
   it('loads sectors from the API', () => {
     const expectedSectors: Sector[] = [
       {
-        id: 1,
+        id: 8,
         parent_id: null,
-        name: 'Manufacturing',
+        name: 'Wood',
       },
       {
-        id: 19,
-        parent_id: 1,
-        name: 'Construction materials',
+        id: 47,
+        parent_id: 8,
+        name: 'Wooden houses',
       },
     ];
 
@@ -56,8 +56,8 @@ describe('SectorSelectionApi', () => {
 
   it('saves a submission', () => {
     const submission: Submission = {
-      name: 'Ada Lovelace',
-      sector_ids: [19, 342],
+      name: 'Mari Tamm',
+      sector_ids: [581, 341],
       agreed_to_terms: true,
     };
 
@@ -81,8 +81,8 @@ describe('SectorSelectionApi', () => {
 
   it('loads the current session submission', () => {
     const submission: Submission = {
-      name: 'Ada Lovelace',
-      sector_ids: [19, 342],
+      name: 'Jaan Kask',
+      sector_ids: [55, 269],
       agreed_to_terms: true,
     };
 

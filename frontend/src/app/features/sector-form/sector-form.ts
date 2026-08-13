@@ -22,7 +22,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 interface ValidationErrorResponse {
   errors?: Record<string, unknown>;
@@ -134,9 +134,7 @@ export class SectorForm implements OnInit {
   }
 
   protected onSubmit(): void {
-    // The save button is marked aria-disabled rather than disabled, because
-    // disabling the element the user just activated throws focus to the body.
-    // This guard is what actually stops a second submit while one is in flight.
+    // aria-disabled preserves focus but does not suppress activation.
     if (this.saving()) {
       return;
     }
@@ -158,24 +156,24 @@ export class SectorForm implements OnInit {
     this.saved.set(false);
     this.saveError.set(false);
 
-    this.sectorSelectionApi.saveSubmission(this.form.getRawValue()).subscribe({
-      next: (submission) => {
-        this.form.reset(submission);
-        this.saved.set(true);
-        this.storedSubmission.set(true);
-        this.saving.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.saving.set(false);
-
-        if (this.applyValidationErrors(error)) {
-          this.submitFailed.set(true);
-          this.focusFirstInvalidControl();
-        } else {
-          this.saveError.set(true);
-        }
-      },
-    });
+    this.sectorSelectionApi
+      .saveSubmission(this.form.getRawValue())
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (submission) => {
+          this.form.reset(submission);
+          this.saved.set(true);
+          this.storedSubmission.set(true);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (this.applyValidationErrors(error)) {
+            this.submitFailed.set(true);
+            this.focusFirstInvalidControl();
+          } else {
+            this.saveError.set(true);
+          }
+        },
+      });
   }
 
   protected changeLanguage(code: string): void {
