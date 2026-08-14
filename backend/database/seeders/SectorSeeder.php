@@ -7,9 +7,6 @@ use Illuminate\Database\Seeder;
 
 class SectorSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         Sector::query()->upsert(

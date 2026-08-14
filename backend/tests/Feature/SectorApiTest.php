@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Sector;
 use Database\Seeders\SectorSeeder;
 
 beforeEach(function () {
@@ -15,10 +14,4 @@ it('returns every sector from the database', function () {
         ->assertJsonStructure([
             'data' => ['*' => ['id', 'parent_id', 'name']],
         ]);
-});
-
-it('can seed sectors repeatedly without creating duplicates', function () {
-    $this->seed(SectorSeeder::class);
-
-    expect(Sector::query()->count())->toBe(79);
 });

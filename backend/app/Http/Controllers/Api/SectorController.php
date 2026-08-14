@@ -12,7 +12,7 @@ class SectorController extends Controller
     public function __invoke(): AnonymousResourceCollection
     {
         return SectorResource::collection(
-            Sector::query()->orderBy('name')->get()
+            Sector::query()->orderBy('id')->get()
         );
     }
 }

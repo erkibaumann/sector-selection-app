@@ -79,7 +79,7 @@ describe('SectorSelectionApi', () => {
     expect(receivedSubmission).toEqual(submission);
   });
 
-  it('loads the current session submission', () => {
+  it('loads the current session submission or returns null when there is none', () => {
     const submission: Submission = {
       name: 'Jaan Kask',
       sector_ids: [55, 269],
@@ -101,20 +101,16 @@ describe('SectorSelectionApi', () => {
     });
 
     expect(receivedSubmission).toEqual(submission);
-  });
-
-  it('returns null when the session has no submission', () => {
-    let receivedSubmission: Submission | null | undefined;
 
     service.getSubmission().subscribe((submission) => {
       receivedSubmission = submission;
     });
 
-    const request = httpTesting.expectOne('/api/submission');
+    const emptyRequest = httpTesting.expectOne('/api/submission');
 
-    expect(request.request.method).toBe('GET');
+    expect(emptyRequest.request.method).toBe('GET');
 
-    request.flush(null, {
+    emptyRequest.flush(null, {
       status: 204,
       statusText: 'No Content',
     });

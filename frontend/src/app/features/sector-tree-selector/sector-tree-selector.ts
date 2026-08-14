@@ -30,7 +30,6 @@ interface SectorTree {
 
 const PATH_SEPARATOR = ' › ';
 
-/** Past this many selections the list collapses behind a "+N more" toggle. */
 const MAX_VISIBLE_PILLS = 4;
 
 @Component({
@@ -149,10 +148,6 @@ export class SectorTreeSelector {
     this.filterText.set(value);
   }
 
-  /**
-   * A browser-supplied clear control is not guaranteed for `type="search"`
-   * (Firefox renders none), so the form provides its own.
-   */
   protected clearFilter(): void {
     this.filterText.set('');
     this.focus();

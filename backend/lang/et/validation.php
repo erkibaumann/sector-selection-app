@@ -9,7 +9,6 @@ return [
 
     'accepted' => 'Väli :attribute tuleb aktsepteerida.',
     'array' => 'Väli :attribute peab olema massiiv.',
-    'distinct' => 'Väljal :attribute on korduv väärtus.',
     'exists' => 'Valitud :attribute on vigane.',
     'integer' => 'Väli :attribute peab olema täisarv.',
     'list' => 'Väli :attribute peab olema loend.',
@@ -17,13 +16,11 @@ return [
     'string' => 'Väli :attribute peab olema tekst.',
 
     'max' => [
-        'array' => 'Väli :attribute ei tohi sisaldada rohkem kui :max elementi.',
         'string' => 'Väli :attribute ei tohi olla pikem kui :max tähemärki.',
     ],
 
     'min' => [
         'array' => 'Väli :attribute peab sisaldama vähemalt :min elementi.',
-        'string' => 'Väli :attribute peab olema vähemalt :min tähemärki pikk.',
     ],
 
     'attributes' => [

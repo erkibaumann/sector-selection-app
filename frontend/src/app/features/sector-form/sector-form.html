@@ -6,11 +6,7 @@
       [attr.aria-busy]="loading()"
     >
       <div class="card-body p-4 p-md-5">
-        <!-- Sits above the heading and outside the form, so switching language
-             is never a step in filling the form in. -->
         <div class="d-flex align-items-center justify-content-end gap-2 mb-3">
-          <!-- The options name themselves, so the label is for assistive
-               technology only rather than repeating what is already visible. -->
           <label class="visually-hidden" for="language">{{ t().languageLabel }}</label>
 
           <select
@@ -42,8 +38,6 @@
           </div>
         } @else {
           @if (restoredSubmission()) {
-            <!-- Not a live region: this is standing content that arrives with
-                 the form, not an update to something already on screen. -->
             <p class="alert alert-info">{{ t().form.restored }}</p>
           }
 

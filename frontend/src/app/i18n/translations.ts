@@ -2,18 +2,11 @@ import { computed, effect, Injectable, signal } from '@angular/core';
 
 export type Language = 'en' | 'et';
 
-/** Listed in the switcher, each label written in the language it selects. */
 export const LANGUAGES: readonly { code: Language; name: string }[] = [
   { code: 'en', name: 'English' },
   { code: 'et', name: 'Eesti' },
 ];
 
-/*
- * Counts are interpolated by small functions rather than an ICU message
- * format, which keeps plurals readable for the two languages this ships with.
- * A third language with a more elaborate plural rule would be the point to
- * reach for a real message formatter.
- */
 const en = {
   languageLabel: 'Language',
 
@@ -72,7 +65,6 @@ const en = {
 
 export type Dictionary = typeof en;
 
-/** Typed against `en`, so a missing or misspelled key fails the build. */
 const et: Dictionary = {
   languageLabel: 'Keel',
 
@@ -137,7 +129,6 @@ const DICTIONARIES: Record<Language, Dictionary> = { en, et };
 export class Translations {
   readonly language = signal<Language>('en');
 
-  /** The active dictionary. Templates read it as `t().form.title`. */
   readonly t = computed(() => DICTIONARIES[this.language()]);
 
   constructor() {

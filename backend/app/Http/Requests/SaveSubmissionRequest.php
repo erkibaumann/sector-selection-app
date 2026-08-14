@@ -10,11 +10,7 @@ use Illuminate\Validation\Rule;
 
 class SaveSubmissionRequest extends FormRequest
 {
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
+    /** @return array<string, ValidationRule|array<mixed>|string> */
     public function rules(): array
     {
         return [
@@ -22,7 +18,6 @@ class SaveSubmissionRequest extends FormRequest
             'sector_ids' => ['required', 'array', 'list', 'min:1'],
             'sector_ids.*' => [
                 'integer',
-                'distinct',
                 Rule::exists(Sector::class, 'id')->using(
                     fn (Builder $query) => $query->whereNotIn(
                         'id',
@@ -33,9 +28,4 @@ class SaveSubmissionRequest extends FormRequest
             'agreed_to_terms' => ['required', 'accepted'],
         ];
     }
-
-    /*
-     * Field names are not listed here. They live under `validation.attributes`
-     * in `lang/`, so each locale names the fields in its own language.
-     */
 }

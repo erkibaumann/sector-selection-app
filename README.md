@@ -75,6 +75,18 @@ controls this port for both Laravel and `compose.yaml`.
 
 After changing `DB_PORT`, run `docker compose up -d` again to publish the new port.
 
+## Cleanup
+
+Stop the frontend and backend development servers with `Ctrl+C`. Then remove the project's
+PostgreSQL container, network, and all development and test database data:
+
+```bash
+cd backend
+docker compose down --volumes
+```
+
+The cloned project directory can then also be deleted if the source code, installed dependencies, and other project files are no longer needed.
+
 ## Using the application
 
 1. Enter a name.
@@ -94,11 +106,13 @@ browser session cannot access it.
 
 ```bash
 cd frontend
+npm audit
 npm test -- --watch=false
 npm run build          # output in frontend/dist/frontend/browser
 
 cd ../backend
 docker compose up -d --wait   # the Pest suite runs against PostgreSQL
+composer audit --locked
 php artisan test --compact
 ```
 
@@ -112,9 +126,9 @@ The assignment requires a complete database dump. The dump is in
 
 Local setup does not use the dump. The `composer setup` command creates and seeds the database.
 
-The dump deliberately excludes `sessions` and `submissions`. These tables contain per-visitor
-runtime data, and a session ID identifies its visitor. Loading the dump therefore creates the same
-starting state as `php artisan migrate:fresh --seed`.
+The dump includes the `sessions` and `submissions` table structures but no rows from them. These
+tables contain per-visitor runtime data, and a session ID identifies its visitor. Loading the dump
+therefore creates the same starting state as `php artisan migrate:fresh --seed`.
 
 ## API
 
@@ -128,8 +142,8 @@ The submission request body has this shape:
 
 ```json
 {
-  "name": "Ada Lovelace",
-  "sector_ids": [19, 342],
+  "name": "Mari Tamm",
+  "sector_ids": [37, 141],
   "agreed_to_terms": true
 }
 ```
@@ -137,7 +151,7 @@ The submission request body has this shape:
 Laravel requires:
 
 - a name with no more than 255 characters;
-- at least one distinct ID for an existing leaf sector; and
+- at least one ID for an existing leaf sector; and
 - acceptance of the terms.
 
 Invalid requests receive a `422 Unprocessable Content` response with validation errors.

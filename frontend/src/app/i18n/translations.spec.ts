@@ -19,35 +19,23 @@ describe('Translations', () => {
     translations = TestBed.inject(Translations);
   });
 
-  it('serves the active dictionary and switches every string at once', () => {
+  it('switches strings, plurals, and the document language together', () => {
+    TestBed.tick();
+
     expect(translations.language()).toBe('en');
     expect(translations.t().form.save).toBe('Save');
     expect(translations.t().selector.legend).toBe('Sectors');
-
-    translations.language.set('et');
-
-    expect(translations.t().form.save).toBe('Salvesta');
-    expect(translations.t().selector.legend).toBe('Sektorid');
-  });
-
-  it('pluralises counts per language', () => {
     expect(translations.t().selector.selectedCount(1)).toBe('1 sector selected');
     expect(translations.t().selector.selectedCount(3)).toBe('3 sectors selected');
-
-    translations.language.set('et');
-
-    expect(translations.t().selector.selectedCount(1)).toBe('1 sektor valitud');
-    expect(translations.t().selector.selectedCount(3)).toBe('3 sektorit valitud');
-  });
-
-  it('keeps the document language in step with the switcher', () => {
-    TestBed.tick();
-
     expect(document.documentElement.lang).toBe('en');
 
     translations.language.set('et');
     TestBed.tick();
 
+    expect(translations.t().form.save).toBe('Salvesta');
+    expect(translations.t().selector.legend).toBe('Sektorid');
+    expect(translations.t().selector.selectedCount(1)).toBe('1 sektor valitud');
+    expect(translations.t().selector.selectedCount(3)).toBe('3 sektorit valitud');
     expect(document.documentElement.lang).toBe('et');
   });
 
@@ -58,8 +46,6 @@ describe('Translations', () => {
     translations.language.set('et');
     http.get('/api/sectors').subscribe();
 
-    // The browser's own Accept-Language says nothing about the switcher, so
-    // the interceptor has to overwrite it for Laravel to answer in Estonian.
     expect(httpTesting.expectOne('/api/sectors').request.headers.get('Accept-Language')).toBe('et');
     httpTesting.verify();
   });
