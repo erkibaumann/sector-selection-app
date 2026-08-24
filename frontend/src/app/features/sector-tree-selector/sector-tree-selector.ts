@@ -2,13 +2,11 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   computed,
-  effect,
   ElementRef,
   inject,
   input,
   output,
   signal,
-  untracked,
   viewChild,
 } from '@angular/core';
 
@@ -50,7 +48,6 @@ export class SectorTreeSelector {
   protected readonly t = inject(Translations).t;
 
   private readonly filterInput = viewChild<ElementRef<HTMLInputElement>>('filterInput');
-  private readonly expandedIds = signal<ReadonlySet<number>>(new Set());
 
   protected readonly filterText = signal('');
   protected readonly normalizedFilter = computed(() =>
@@ -60,7 +57,6 @@ export class SectorTreeSelector {
 
   protected readonly tree = computed<SectorTree>(() => this.buildTree(this.sectors()));
   protected readonly selectedIdSet = computed(() => new Set(this.selectedIds()));
-  /** A `Set` keeps insertion order, so selections stay in the order they were made. */
   protected readonly selectedNodes = computed(() => {
     const { nodesById } = this.tree();
 
@@ -84,19 +80,6 @@ export class SectorTreeSelector {
     () => this.selectedNodes().length - this.visibleSelectedNodes().length,
   );
 
-  private readonly categoryIds = computed(() =>
-    this.tree()
-      .orderedNodes.filter((node) => node.children.length > 0)
-      .map((node) => node.id),
-  );
-  protected readonly allExpanded = computed(() => {
-    const expandedIds = this.expandedIds();
-    const categoryIds = this.categoryIds();
-
-    return categoryIds.length > 0 && categoryIds.every((id) => expandedIds.has(id));
-  });
-
-  /** `null` means no filter is active, so every node is visible. */
   protected readonly visibleIds = computed<ReadonlySet<number> | null>(() => {
     const query = this.normalizedFilter();
 
@@ -106,8 +89,6 @@ export class SectorTreeSelector {
 
     const visible = new Set<number>();
 
-    // A node's path contains its ancestors' names, so descendants of a match
-    // match too. Only the ancestors of a match need to be revealed.
     for (const node of this.tree().orderedNodes) {
       if (!node.path.toLocaleLowerCase().includes(query)) {
         continue;
@@ -130,15 +111,6 @@ export class SectorTreeSelector {
       (node) => node.selectable && node.path.toLocaleLowerCase().includes(query),
     ).length;
   });
-  constructor() {
-    // Reveal the categories leading to whatever is already selected, so a
-    // restored submission can be edited without hunting for it.
-    effect(() => {
-      const selectedNodes = this.selectedNodes();
-
-      untracked(() => this.expandAncestors(selectedNodes));
-    });
-  }
 
   focus(): void {
     this.filterInput()?.nativeElement.focus();
@@ -155,22 +127,6 @@ export class SectorTreeSelector {
 
   protected toggleShowAllSelected(): void {
     this.showAllSelected.update((showAll) => !showAll);
-  }
-
-  protected toggleExpanded(id: number): void {
-    const expandedIds = new Set(this.expandedIds());
-
-    if (expandedIds.has(id)) {
-      expandedIds.delete(id);
-    } else {
-      expandedIds.add(id);
-    }
-
-    this.expandedIds.set(expandedIds);
-  }
-
-  protected isExpanded(node: SectorTreeNode): boolean {
-    return node.children.length > 0 && (this.isFiltering() || this.expandedIds().has(node.id));
   }
 
   protected isVisible(id: number): boolean {
@@ -208,28 +164,8 @@ export class SectorTreeSelector {
     this.selectedIdsChange.emit([]);
   }
 
-  protected toggleExpandAll(): void {
-    this.expandedIds.set(this.allExpanded() ? new Set() : new Set(this.categoryIds()));
-  }
-
   protected checkboxId(id: number): string {
     return `sector-checkbox-${id}`;
-  }
-
-  protected childrenId(id: number): string {
-    return `sector-children-${id}`;
-  }
-
-  private expandAncestors(selectedNodes: readonly SectorTreeNode[]): void {
-    const expandedIds = new Set(this.expandedIds());
-
-    for (const node of selectedNodes) {
-      for (let ancestor = node.parent; ancestor !== null; ancestor = ancestor.parent) {
-        expandedIds.add(ancestor.id);
-      }
-    }
-
-    this.expandedIds.set(expandedIds);
   }
 
   private buildTree(sectors: readonly Sector[]): SectorTree {

@@ -92,30 +92,13 @@
       }
     </div>
 
-    <div class="sector-filter-meta">
-      <p class="form-text mb-0" id="sector-filter-results" aria-live="polite">
-        @if (isFiltering()) {
-          {{ t().selector.resultsFound(resultCount()) }}
-        } @else {
-          {{ t().selector.resultsAvailable(resultCount()) }}
-        }
-      </p>
-
-      @if (!isFiltering()) {
-        <button
-          class="btn btn-sm btn-link p-0"
-          type="button"
-          aria-controls="sector-tree-list"
-          (click)="toggleExpandAll()"
-        >
-          @if (allExpanded()) {
-            {{ t().selector.collapseAll }}
-          } @else {
-            {{ t().selector.expandAll }}
-          }
-        </button>
+    <p class="form-text mb-0" id="sector-filter-results" aria-live="polite">
+      @if (isFiltering()) {
+        {{ t().selector.resultsFound(resultCount()) }}
+      } @else {
+        {{ t().selector.resultsAvailable(resultCount()) }}
       }
-    </div>
+    </p>
   </div>
 
   <div class="sector-tree-scroll rounded border bg-body" tabindex="-1">
@@ -154,30 +137,14 @@
         />
         <label class="sector-node-name" [for]="checkboxId(node.id)">{{ node.name }}</label>
       </div>
-    } @else if (isFiltering()) {
+    } @else {
       <p class="sector-node sector-category mb-0">
-        <span class="sector-chevron sector-chevron-open" aria-hidden="true"></span>
         <span class="sector-node-name">{{ node.name }}</span>
       </p>
-    } @else {
-      <button
-        class="sector-node sector-category sector-category-button"
-        type="button"
-        [attr.aria-expanded]="isExpanded(node)"
-        [attr.aria-controls]="childrenId(node.id)"
-        (click)="toggleExpanded(node.id)"
-      >
-        <span
-          class="sector-chevron"
-          [class.sector-chevron-open]="isExpanded(node)"
-          aria-hidden="true"
-        ></span>
-        <span class="sector-node-name">{{ node.name }}</span>
-      </button>
     }
 
     @if (node.children.length > 0) {
-      <ul class="sector-tree-list" [id]="childrenId(node.id)" [hidden]="!isExpanded(node)">
+      <ul class="sector-tree-list">
         @for (child of node.children; track child.id) {
           @if (isVisible(child.id)) {
             <ng-container

@@ -50,8 +50,6 @@ const en = {
     resultsFound: (count: number) => `${count} ${count === 1 ? 'sector' : 'sectors'} found.`,
     resultsAvailable: (count: number) =>
       `${count} ${count === 1 ? 'sector' : 'sectors'} available.`,
-    expandAll: 'Expand all',
-    collapseAll: 'Collapse all',
     noMatches: 'No sectors match your filter.',
   },
 
@@ -103,15 +101,11 @@ const et: Dictionary = {
     showMore: (count: number) => `+${count} veel`,
     showFewer: 'Näita vähem',
     filterLabel: 'Filtreeri sektoreid',
-    // Sector names come from the database and exist only in English, so the
-    // example has to stay in English to actually match something.
     filterPlaceholder: 'nt Printing või Manufacturing › Wood',
     clearFilter: 'Tühjenda',
     resultsFound: (count: number) => `Leitud ${count} ${count === 1 ? 'sektor' : 'sektorit'}.`,
     resultsAvailable: (count: number) =>
       `Saadaval ${count} ${count === 1 ? 'sektor' : 'sektorit'}.`,
-    expandAll: 'Ava kõik',
-    collapseAll: 'Sulge kõik',
     noMatches: 'Ükski sektor ei vasta filtrile.',
   },
 
@@ -132,8 +126,6 @@ export class Translations {
   readonly t = computed(() => DICTIONARIES[this.language()]);
 
   constructor() {
-    // Assistive technology picks pronunciation from the document language, so
-    // it has to follow the switcher rather than stay at the index.html default.
     effect(() => {
       document.documentElement.lang = this.language();
     });

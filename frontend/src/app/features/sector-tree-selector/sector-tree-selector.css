@@ -2,10 +2,6 @@
   display: block;
 }
 
-/*
- * Bootstrap's reboot floats legends and sizes them like a heading. This one is
- * a field label, so it is reset to plain flow content.
- */
 .sector-legend {
   float: none;
   width: auto;
@@ -57,7 +53,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* WCAG 2.2 target-size minimum. */
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
@@ -75,18 +70,12 @@
   color: var(--bs-body-color);
 }
 
-/*
- * Filter — the explicit Clear button is the one dependable affordance, since a
- * browser-supplied clear control is optional for type="search" and Firefox
- * renders none. The native one is suppressed so both never show at once.
- */
-
-.sector-filter-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+.selected-sector-toggle {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
 }
+
+/* Filter */
 
 .sector-filter-input {
   max-width: 24rem;
@@ -97,14 +86,8 @@
   appearance: none;
 }
 
-.selected-sector-toggle {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-}
-
 /* Tree */
 
-/* Fixed, so wrapping a second row of pills never resizes the tree. */
 .sector-tree-scroll {
   height: clamp(15rem, 40vh, 20rem);
   overflow: auto;
@@ -134,48 +117,8 @@
   gap: 0.5rem;
 }
 
-.sector-category {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: start;
-}
-
 .sector-category .sector-node-name {
   font-weight: 600;
-}
-
-.sector-category-button {
-  border-radius: 0.375rem;
-}
-
-.sector-category-button:hover .sector-node-name,
-.sector-category-button:focus-visible .sector-node-name {
-  text-decoration: underline;
-}
-
-.sector-chevron {
-  flex: 0 0 auto;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-top: 1rem;
-  margin-inline: 0.375rem 0.25rem;
-  border-right: 0.125rem solid currentcolor;
-  border-bottom: 0.125rem solid currentcolor;
-  transform: rotate(-45deg);
-  transition: transform 0.15s ease-in-out;
-}
-
-.sector-chevron-open {
-  margin-top: 0.875rem;
-  transform: rotate(45deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sector-chevron {
-    transition: none;
-  }
 }
 
 .sector-checkbox {

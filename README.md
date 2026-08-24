@@ -1,9 +1,7 @@
 # Sector Selection
 
 A small full-stack application for selecting business sectors. It stores one submission per browser
-session and lets the user edit that submission until the session ends.
-
-This repository is a technical assignment. It demonstrates an accessible Angular form backed by a
+session and lets the user edit that submission until the session ends. This repository is a technical assignment. It demonstrates an accessible Angular form backed by a
 Laravel API and PostgreSQL database.
 
 ## At a glance
@@ -90,7 +88,7 @@ The cloned project directory can then also be deleted if the source code, instal
 ## Using the application
 
 1. Enter a name.
-2. Expand the categories or filter by a sector name or full category path.
+2. Scroll the sector list, or filter it by a sector name or full category path.
 3. Select one or more leaf sectors. Categories that contain sectors are navigation only.
 4. Agree to the terms.
 5. Select **Save**.
@@ -160,87 +158,81 @@ Invalid requests receive a `422 Unprocessable Content` response with validation 
 
 ### Sectors
 
-**The hierarchy uses `parent_id`.** Each sector can refer to another sector as its parent. The
+- **The hierarchy uses `parent_id`.** Each sector can refer to another sector as its parent. The
 supplied option IDs remain the primary keys. Angular uses these relationships to build the nested
 list and full category paths. The database does not store visual indentation.
 
-**Angular sorts siblings alphabetically.** This produces the supplied order without a `sort_order`
+- **Angular sorts siblings alphabetically.** This produces the supplied order without a `sort_order`
 column. Sorting in the client also avoids differences between database collations.
 
-**Only leaf sectors are selectable.** A sector with children is a navigation heading. Selections do
+- **Only leaf sectors are selectable.** A sector with children is a navigation heading. Selections do
 not cascade, and there is no tri-state selection. Laravel rejects category IDs. Angular also drops
 any stored category ID when it refills the form.
 
-**The selector uses native controls.** Checkboxes, buttons, and nested lists provide accessible
+- **The selector uses native controls.** Checkboxes, buttons, and nested lists provide accessible
 keyboard and touch interaction without a third-party component.
 
 ### Backend
 
-**PostgreSQL is used throughout.** Development and tests use the same database engine, while
+- **PostgreSQL is used throughout.** Development and tests use the same database engine, while
 Compose makes its version and setup reproducible.
 
-**The session cookie identifies the submission.** An `updateOrCreate` operation keyed by session ID
+- **The session cookie identifies the submission.** An `updateOrCreate` operation keyed by session ID
 keeps one submission per session, so the same endpoint handles the first save and later edits.
 
-**Submissions and sectors have a many-to-many relationship.** The `sector_submission` table keeps
+- **Submissions and sectors have a many-to-many relationship.** The `sector_submission` table keeps
 the data normalised and allows each submission to contain multiple sectors.
 
-**Every API route starts the Laravel session.** The API prepends Laravel's `web` middleware so the
+- **Every API route starts the Laravel session.** The API prepends Laravel's `web` middleware so the
 session cookie is always available. Authentication middleware is unnecessary because the
 assignment has no accounts.
 
-**Unused framework defaults were removed.** Authentication, cache, and queue database structures
+- **Unused framework defaults were removed.** Authentication, cache, and queue database structures
 are unnecessary for this application's scope.
 
 ### Frontend
 
-**Reactive forms manage form state and validation.** The sector selector receives values and emits
+- **Reactive forms manage form state and validation.** The sector selector receives values and emits
 changes, while a typed API service keeps HTTP logic out of the components.
 
-**Bootstrap provides CSS only** for responsive layout and form styling; no component library is
+- **Bootstrap provides CSS only** for responsive layout and form styling; no component library is
 needed.
 
-**Accessibility starts with native HTML.** Labels, `fieldset`, `legend`, `output`, and nested lists
+- **Accessibility starts with native HTML.** Labels, `fieldset`, `legend`, `output`, and nested lists
 provide the form's semantics. Hints and errors are connected to their controls, and a failed submit
 moves focus to the first invalid field.
 
-**The Save button remains focusable while saving.** It uses `aria-disabled` to communicate its
+- **The Save button remains focusable while saving.** It uses `aria-disabled` to communicate its
 state, while the submit handler prevents duplicate requests. The status output announces progress
 without moving keyboard focus.
 
 ### Language
 
-**A signal selects a typed English or Estonian dictionary.** Switching it updates all interface
+- **A signal selects a typed English or Estonian dictionary.** Switching it updates all interface
 copy, including visible client-side errors. The two small dictionaries share one file; a larger
 application would separate them by locale.
 
-**Small functions handle the count messages.** They cover the English and Estonian forms without
+- **Small functions handle the count messages.** They cover the English and Estonian forms without
 adding a message-format library.
 
-**The selected language also controls server validation.** Requests send `Accept-Language`, and
+- **The selected language also controls server validation.** Requests send `Accept-Language`, and
 Laravel returns validation messages in the chosen language.
 
-**Sector names remain in English.** They come from the supplied database data. Translated names
+- **Sector names remain in English.** They come from the supplied database data. Translated names
 would require locale-specific records in the database.
 
 ### Scope
 
-**Deployment is same-origin.** Keeping the frontend and API on one origin lets Laravel's session
+- **Deployment is same-origin.** Keeping the frontend and API on one origin lets Laravel's session
 and Cross-Site Request Forgery (CSRF) cookies work without cross-origin configuration.
 
-**Production hardening is intentionally limited.** Basic request throttling and session expiry are
+- **Production hardening is intentionally limited.** Basic request throttling and session expiry are
 included. Broader operational work is left out to keep this technical assignment proportionate.
 
 ## What I would do differently for a real product
 
 This assignment demonstrates the main concerns without building a complete production system. The
 following work would depend on the product's scale and requirements.
-
-### Would build
-
-- **End-to-end tests** for the complete browser, API, and session flow.
-- **Automated checks** that run formatting, tests, and the production build for every change.
-- **Error monitoring** so developers can diagnose failures hidden behind user-friendly messages.
 
 ### Would build differently
 
@@ -260,8 +252,6 @@ following work would depend on the product's scale and requirements.
   policy.
 - **Remembered language.** Local storage, a cookie, or a language code in the URL could preserve
   the choice after a refresh.
-- **Server error translation.** Returning error keys would let visible server errors follow a
-  language change, but would duplicate the validation catalogue in the frontend.
 
 ## Project structure
 

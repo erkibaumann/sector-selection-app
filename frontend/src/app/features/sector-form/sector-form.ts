@@ -9,11 +9,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { SectorSelectionApi } from '../../data-access/sector-selection-api';
-import { Dictionary, Language, LANGUAGES, Translations } from '../../i18n/translations';
-import { Sector } from '../../models/sector';
-import { Submission } from '../../models/submission';
-import { SectorTreeSelector } from '../sector-tree-selector/sector-tree-selector';
 import {
   AbstractControl,
   FormControl,
@@ -24,15 +19,16 @@ import {
 } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
 
+import { SectorSelectionApi } from '../../data-access/sector-selection-api';
+import { Dictionary, Language, LANGUAGES, Translations } from '../../i18n/translations';
+import { Sector } from '../../models/sector';
+import { Submission } from '../../models/submission';
+import { SectorTreeSelector } from '../sector-tree-selector/sector-tree-selector';
+
 interface ValidationErrorResponse {
   errors?: Record<string, unknown>;
 }
 
-/**
- * Client-side fallbacks, keyed by the validator that produced them. The values
- * name a message rather than holding one, so switching language re-renders
- * errors that are already on screen.
- */
 const ERROR_KEYS: Record<keyof Submission, Record<string, keyof Dictionary['errors']>> = {
   name: {
     required: 'nameRequired',
@@ -69,9 +65,7 @@ export class SectorForm implements OnInit {
   private readonly sectorSelector = viewChild(SectorTreeSelector);
   private readonly termsCheckbox = viewChild<ElementRef<HTMLInputElement>>('termsCheckbox');
 
-  /** A submission was already stored when this page loaded. */
   protected readonly restoredSubmission = signal(false);
-  /** A submission exists at all, whether restored or saved just now. */
   protected readonly storedSubmission = signal(false);
   protected readonly submitFailed = signal(false);
   protected readonly sectors = signal<Sector[]>([]);
@@ -134,7 +128,6 @@ export class SectorForm implements OnInit {
   }
 
   protected onSubmit(): void {
-    // aria-disabled preserves focus but does not suppress activation.
     if (this.saving()) {
       return;
     }
@@ -196,10 +189,6 @@ export class SectorForm implements OnInit {
     );
   }
 
-  /**
-   * The single source of what a field is currently complaining about. Server
-   * messages win when present; otherwise the validator fallbacks apply.
-   */
   protected errorMessages(field: keyof Submission): string[] {
     const control = this.form.controls[field];
 
@@ -257,11 +246,6 @@ export class SectorForm implements OnInit {
     return applied;
   }
 
-  /**
-   * Deferred until after the render that adds the error text and its
-   * aria-describedby link, so the description exists when focus lands on the
-   * control and is announced with it.
-   */
   private focusFirstInvalidControl(): void {
     afterNextRender(
       () => {

@@ -10,8 +10,6 @@
   max-width: 24rem;
 }
 
-/* Consent is the most consequential control here, so it gets the same 44px
-   target as the sector rows rather than Bootstrap's 1em default. */
 .terms-check {
   display: flex;
   align-items: center;
@@ -29,7 +27,6 @@
   margin: 0;
 }
 
-/* The whole 44px row is the target, not just the text's own line box. */
 .terms-check .form-check-label {
   display: flex;
   align-items: center;
@@ -37,11 +34,6 @@
   cursor: pointer;
 }
 
-/*
- * Bootstrap's disclosure components need its JavaScript, so this stays a native
- * <details> and borrows link colours to read as the control it is. Padding
- * rather than a display change, which would drop the native marker.
- */
 .terms-summary {
   width: fit-content;
   padding-block: 0.5rem;
@@ -54,13 +46,10 @@
   text-decoration: underline;
 }
 
-/* Wide enough for "Saving..." and its spinner, so the button keeps its size
-   through the whole save rather than growing mid-request. */
 .save-button {
   min-width: 12rem;
 }
 
-/* Reads as unavailable without the `disabled` attribute that would blur it. */
 .btn-busy {
   opacity: 0.65;
 }
@@ -69,7 +58,6 @@
   min-height: 1.5rem;
 }
 
-/* Full-width on phones, where a centred 12rem button is an easy miss. */
 @media (max-width: 575.98px) {
   .save-button {
     width: 100%;

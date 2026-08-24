@@ -73,15 +73,6 @@ describe('SectorForm', () => {
   const element = (): HTMLElement => fixture.nativeElement as HTMLElement;
 
   const selectSector = (sectorId: number): void => {
-    const sector = sectors.find((candidate) => candidate.id === sectorId);
-
-    element()
-      .querySelector<HTMLButtonElement>(
-        `button[aria-controls="sector-children-${sector?.parent_id}"]`,
-      )
-      ?.click();
-    fixture.detectChanges();
-
     const checkbox = element().querySelector<HTMLInputElement>(`#sector-checkbox-${sectorId}`);
 
     if (!checkbox) {

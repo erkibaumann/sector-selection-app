@@ -27,17 +27,15 @@ describe('SectorTreeSelector', () => {
     element = fixture.nativeElement as HTMLElement;
   });
 
-  const categoryButton = (sectorId: number): HTMLButtonElement => {
-    const button = element.querySelector<HTMLButtonElement>(
-      `button[aria-controls="sector-children-${sectorId}"]`,
+  const nodeNames = (list: Element | null | undefined): (string | undefined)[] =>
+    Array.from(list?.querySelectorAll(':scope > li') ?? []).map((item) =>
+      item
+        .querySelector<HTMLElement>(':scope > .sector-node .sector-node-name')
+        ?.textContent?.trim(),
     );
 
-    if (!button) {
-      throw new Error(`Expected a category button for sector ${sectorId}.`);
-    }
-
-    return button;
-  };
+  const childList = (list: Element | null | undefined, position: number): Element | null =>
+    list?.querySelector(`:scope > li:nth-child(${position}) > .sector-tree-list`) ?? null;
 
   const checkbox = (sectorId: number): HTMLInputElement => {
     const input = element.querySelector<HTMLInputElement>(`#sector-checkbox-${sectorId}`);
@@ -69,52 +67,24 @@ describe('SectorTreeSelector', () => {
     return selections;
   };
 
-  it('builds a sorted hierarchy in which only leaves are selectable', () => {
-    const rootNames = Array.from(element.querySelectorAll('.sector-tree-root > li')).map((item) =>
-      item
-        .querySelector<HTMLElement>(':scope > .sector-node .sector-node-name')
-        ?.textContent?.trim(),
-    );
+  it('builds a sorted hierarchy in which every level is open and only leaves are selectable', () => {
+    const root = element.querySelector('.sector-tree-root');
 
-    expect(rootNames).toEqual(['Manufacturing', 'Service']);
+    expect(nodeNames(root)).toEqual(['Manufacturing', 'Service']);
     expect(element.querySelector('#sector-checkbox-1')).toBeNull();
 
-    categoryButton(1).click();
-    fixture.detectChanges();
+    const manufacturing = childList(root, 1);
 
-    const childNames = Array.from(
-      element.querySelectorAll('#sector-children-1 > li > .sector-node .sector-node-name'),
-    ).map((item) => item.textContent?.trim());
-
-    expect(childNames).toEqual(['Electronics and Optics', 'Printing']);
+    expect(nodeNames(manufacturing)).toEqual(['Electronics and Optics', 'Printing']);
     expect(checkbox(18)).toBeTruthy();
     expect(element.querySelector('#sector-checkbox-5')).toBeNull();
 
-    categoryButton(5).click();
-    fixture.detectChanges();
-
+    expect(nodeNames(childList(manufacturing, 2))).toEqual([
+      'Advertising',
+      'Book/Periodicals printing',
+    ]);
     expect(checkbox(148)).toBeTruthy();
     expect(checkbox(150)).toBeTruthy();
-  });
-
-  it('expands and collapses a category', () => {
-    const button = categoryButton(1);
-    const controlledList = element.querySelector<HTMLUListElement>('#sector-children-1');
-
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(controlledList?.hidden).toBe(true);
-
-    button.click();
-    fixture.detectChanges();
-
-    expect(button.getAttribute('aria-expanded')).toBe('true');
-    expect(controlledList?.hidden).toBe(false);
-
-    button.click();
-    fixture.detectChanges();
-
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(controlledList?.hidden).toBe(true);
   });
 
   it('filters by full path and shows a clear no-results state', () => {
@@ -123,7 +93,7 @@ describe('SectorTreeSelector', () => {
     expect(element.textContent).toContain('1 sector found.');
     expect(element.querySelectorAll('.sector-checkbox').length).toBe(1);
     expect(checkbox(148)).toBeTruthy();
-    expect(element.querySelector('button[aria-controls="sector-children-1"]')).toBeNull();
+    expect(nodeNames(element.querySelector('.sector-tree-root'))).toEqual(['Manufacturing']);
 
     filter('not a real sector');
 
@@ -186,9 +156,6 @@ describe('SectorTreeSelector', () => {
     expect(group?.querySelector('legend')?.textContent).toContain('Sectors');
     expect(group?.getAttribute('aria-describedby')).toBe('sector-help sector-error');
     expect(group?.getAttribute('aria-invalid')).toBe('true');
-
-    categoryButton(1).click();
-    fixture.detectChanges();
 
     const electronicsCheckbox = checkbox(18);
     const electronicsLabel = element.querySelector<HTMLLabelElement>(
